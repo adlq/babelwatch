@@ -19,7 +19,7 @@ class StandardResourceExtractor
 
 	public static $poUtils;
 
-	public function __construct($repoName, $repoPath, $assetPath, $pophpPath)
+	public function __construct($repoName, $repoPath, $assetPath, $pophpPath, $options = array())
 	{
 		$this->repoName = $repoName;
 		$this->repoPath = $repoPath;
