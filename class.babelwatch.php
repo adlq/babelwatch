@@ -55,43 +55,43 @@ class Babelwatch
 	 */
 	private function checkConfig()
 	{
-		if (!array_key_exists('mysql', $GLOBALS))
+		if (!array_key_exists('mysql', $GLOBALS['conf']))
 			throw new Exception('No MySQL configuration found in conf.php');
 
-		if (!array_key_exists('host', $GLOBALS['mysql'])
-			|| !array_key_exists('user', $GLOBALS['mysql'])
-			|| !array_key_exists('pwd', $GLOBALS['mysql'])
-			|| !array_key_exists('db', $GLOBALS['mysql']))
+		if (!array_key_exists('host', $GLOBALS['conf']['mysql'])
+			|| !array_key_exists('user', $GLOBALS['conf']['mysql'])
+			|| !array_key_exists('pwd', $GLOBALS['conf']['mysql'])
+			|| !array_key_exists('db', $GLOBALS['conf']['mysql']))
 			throw new Exception('Missing parameter in MySQL configuration. Please refer to conf_sample.php');
 
-		if (!array_key_exists('repo', $GLOBALS) && is_array($GLOBALS['repo']))
+		if (!array_key_exists('repo', $GLOBALS['conf']) && is_array($GLOBALS['conf']['repo']))
 			throw new Exception("No repository configuration found in conf.php");
 
-		foreach ($GLOBALS['repo'] as $repo)
+		foreach ($GLOBALS['conf']['repo'] as $repo)
 		{
 			if (!is_array($repo))
 				throw new Exception('Each entry in $GLOBALS[\'repo\'] must be an array');
 
-			if (!array_key_exists('active', $GLOBALS['repo'])
-			|| !array_key_exists('operations', $GLOBALS['repo'])
-			|| !array_key_exists('repoPath', $GLOBALS['repo'])
-			|| !array_key_exists('sourceFolder', $GLOBALS['repo'])
-			|| !array_key_exists('extensions', $GLOBALS['repo'])
-			|| !array_key_exists('resourceExtractorClass', $GLOBALS['repo'])
-			|| !array_key_exists('projectSlug', $GLOBALS['repo'])
-			|| !array_key_exists('iterationSlug', $GLOBALS['repo'])
-			|| !array_key_exists('options', $GLOBALS['repo'])
-			|| !array_key_exists('sourceDocName', $GLOBALS['repo']))
+			if (!array_key_exists('active', $GLOBALS['conf']['repo'])
+			|| !array_key_exists('operations', $GLOBALS['conf']['repo'])
+			|| !array_key_exists('repoPath', $GLOBALS['conf']['repo'])
+			|| !array_key_exists('sourceFolder', $GLOBALS['conf']['repo'])
+			|| !array_key_exists('extensions', $GLOBALS['conf']['repo'])
+			|| !array_key_exists('resourceExtractorClass', $GLOBALS['conf']['repo'])
+			|| !array_key_exists('projectSlug', $GLOBALS['conf']['repo'])
+			|| !array_key_exists('iterationSlug', $GLOBALS['conf']['repo'])
+			|| !array_key_exists('options', $GLOBALS['conf']['repo'])
+			|| !array_key_exists('sourceDocName', $GLOBALS['conf']['repo']))
 				throw new Exception('Missing parameter in repository configuration. Please refer to conf_sample.php');
 		}
 
-		if (!array_key_exists('assetPath', $GLOBALS))
+		if (!array_key_exists('assetPath', $GLOBALS['conf']))
 			throw new Exception('No asset path found in conf.php. This is where the PO/POT files will be stored');
 
-		if (!array_key_exists('tmsToolkitPath', $GLOBALS))
+		if (!array_key_exists('tmsToolkitPath', $GLOBALS['conf']))
 			throw new Exception('No path to TMS toolkit found in conf.php.');
 
-		if (!array_key_exists('pophpPath', $GLOBALS))
+		if (!array_key_exists('pophpPath', $GLOBALS['conf']))
 			throw new Exception('No path to pophp found in conf.php');
 	}
 
