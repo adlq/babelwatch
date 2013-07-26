@@ -67,22 +67,22 @@ class Babelwatch
 		if (!array_key_exists('repo', $GLOBALS['conf']) && is_array($GLOBALS['conf']['repo']))
 			throw new Exception("No repository configuration found in conf.php");
 
-		foreach ($GLOBALS['conf']['repo'] as $repo)
+		foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 		{
-			if (!is_array($repo))
+			if (!is_array($repoInfo))
 				throw new Exception('Each entry in $GLOBALS[\'repo\'] must be an array');
 
-			if (!array_key_exists('active', $GLOBALS['conf']['repo'])
-			|| !array_key_exists('operations', $GLOBALS['conf']['repo'])
-			|| !array_key_exists('repoPath', $GLOBALS['conf']['repo'])
-			|| !array_key_exists('sourceFolder', $GLOBALS['conf']['repo'])
-			|| !array_key_exists('extensions', $GLOBALS['conf']['repo'])
-			|| !array_key_exists('resourceExtractorClass', $GLOBALS['conf']['repo'])
-			|| !array_key_exists('projectSlug', $GLOBALS['conf']['repo'])
-			|| !array_key_exists('iterationSlug', $GLOBALS['conf']['repo'])
-			|| !array_key_exists('options', $GLOBALS['conf']['repo'])
-			|| !array_key_exists('sourceDocName', $GLOBALS['conf']['repo']))
-				throw new Exception('Missing parameter in repository configuration. Please refer to conf_sample.php');
+			if (!array_key_exists('active', $repoInfo)
+			|| !array_key_exists('operations', $repoInfo)
+			|| !array_key_exists('repoPath', $repoInfo)
+			|| !array_key_exists('sourceFolder', $repoInfo)
+			|| !array_key_exists('extensions', $repoInfo)
+			|| !array_key_exists('resourceExtractorClass', $repoInfo)
+			|| !array_key_exists('projectSlug', $repoInfo)
+			|| !array_key_exists('iterationSlug', $repoInfo)
+			|| !array_key_exists('options', $repoInfo)
+			|| !array_key_exists('sourceDocName', $repoInfo))
+				throw new Exception("Missing parameter in configuration for repository $repo. Please refer to conf_sample.php");
 		}
 
 		if (!array_key_exists('assetPath', $GLOBALS['conf']))
