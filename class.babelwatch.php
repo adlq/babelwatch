@@ -158,6 +158,8 @@ class Babelwatch
 	{
 		$opArray = array(UPDATE_POT, UPDATE_TMS, UPDATE_TRACKING);
 
+		echo "Working on {$this->repoName}\n===\n";
+
 		if (($operations & UPDATE_POT) === UPDATE_POT)
 		{
 			$potFiles = $this->resourceExtractor->buildGettextFiles($rootDir, $extentions);
@@ -178,6 +180,8 @@ class Babelwatch
 
 		if (($operations & UPDATE_TRACKING) === UPDATE_TRACKING)
 			$this->updateTracking($potFiles['old'], $potFiles['new']);
+
+		echo "\nWork on {$this->repoName} DONE\n===\n\n";
 	}
 
 	/**
@@ -203,7 +207,7 @@ class Babelwatch
 	 */
 	public function updateTMS($newPot)
 	{
-		echo "Update TMS...";
+		echo "Updating TMS for {$this->repoName}...\n===\n";
 		require_once($this->tmsToolkitPath . 'conf.php');
 		require_once($this->tmsToolkitPath . 'ZanataPHPToolkit.php');
 
@@ -228,7 +232,7 @@ class Babelwatch
 		$zanataToolkit = new ZanataPHPToolkit($user, $apiKey, $projectSlug, $iterationSlug, $zanataUrl, true);
 
 		$zanataToolkit->pushPotEntries($newPot, $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName'], 'en-GB');
-		echo "Done\n";
+		echo "\nDone\n===\n";
 	}
 
 	/**
@@ -239,7 +243,7 @@ class Babelwatch
 	 */
 	public function updateTracking($oldPot, $newPot)
 	{
-		echo "Update tracking...\n";
+		echo "Updating tracking for {$this->repoName}...\n===\n";
 		require_once($this->poToolkitPath . 'POUtils.php');
 
 		// Compare the new and old pot files
@@ -263,7 +267,7 @@ class Babelwatch
 		$changesetId = $this->updateChangeset($changeset, $repoId);
 		$this->updateStringState($changesetId, $newStrings, 'a');
 		$this->updateStringState($changesetId, $removedStrings, 'r');
-		echo "Done\n";
+		echo "\nDone\n===\n";
 	}
 
 	/**
