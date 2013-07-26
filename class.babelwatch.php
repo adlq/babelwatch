@@ -170,6 +170,7 @@ class Babelwatch
 			if (($operations & UPDATE_TRACKING) === UPDATE_TRACKING)
 				$this->updateTracking($potFiles['old'], $potFiles['new']);
 
+			echo "\nWork on {$this->repoName} DONE\n***\n\n";
 			return;
 		}
 
@@ -182,6 +183,7 @@ class Babelwatch
 			$this->updateTracking($potFiles['old'], $potFiles['new']);
 
 		echo "\nWork on {$this->repoName} DONE\n***\n\n";
+		return;
 	}
 
 	/**
