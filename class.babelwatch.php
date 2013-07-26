@@ -200,7 +200,7 @@ class Babelwatch
 		// Update the source entries on Zanata!
 		$zanataToolkit = new ZanataPHPToolkit($user, $apiKey, $projectSlug, $iterationSlug, $zanataUrl, true);
 
-		$zanataToolkit->pushPotEntries($newPot, $GLOBALS['repo'][$this->repoName]['sourceDocName'], 'en-GB');
+		$zanataToolkit->pushPotEntries($newPot, $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName'], 'en-GB');
 		echo "Done\n";
 	}
 
