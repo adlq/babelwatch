@@ -24,6 +24,8 @@ class SubProjectResourceExtractor extends StandardResourceExtractor implements I
 		// Generate latest POT file
 		$diff = $this->poUtils->compare($potFile, $this->options['refPot']);
 
+		$res = '';
+
 		foreach($diff['firstOnly'] as $entry)
 		{
 			$res .= $entry->__toString();
