@@ -1,4 +1,5 @@
 <?php
+require_once('common.php');
 require_once('conf.php');
 require_once('Babelwatch.php');
 require_once('class.subProjectResourceExtractor.php');

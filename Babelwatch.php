@@ -1,9 +1,5 @@
 <?php
-
-define('UPDATE_POT', 1);
-define('UPDATE_TMS', 2);
-define('UPDATE_TRACKING', 4);
-
+require_once('common.php');
 class Babelwatch
 {
 

@@ -1,5 +1,5 @@
 <?php
-
+require_once('common.php');
 $GLOBALS['conf'] = array(
 	'mysql' => array(
 		'host' => '',
