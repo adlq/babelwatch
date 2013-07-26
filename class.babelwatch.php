@@ -158,7 +158,7 @@ class Babelwatch
 	{
 		$opArray = array(UPDATE_POT, UPDATE_TMS, UPDATE_TRACKING);
 
-		echo "Working on {$this->repoName}\n===\n";
+		echo "Working on {$this->repoName}\n***\n";
 
 		if (($operations & UPDATE_POT) === UPDATE_POT)
 		{
@@ -181,7 +181,7 @@ class Babelwatch
 		if (($operations & UPDATE_TRACKING) === UPDATE_TRACKING)
 			$this->updateTracking($potFiles['old'], $potFiles['new']);
 
-		echo "\nWork on {$this->repoName} DONE\n===\n\n";
+		echo "\nWork on {$this->repoName} DONE\n***\n\n";
 	}
 
 	/**
