@@ -24,7 +24,7 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 			$GLOBALS['conf']['mysql'],
 			$resUpdater);
 
-		$tracker->run('source', array('php', 'js'));
+		$tracker->run('source', array('php', 'js'), UPDATE_POT | UPDATE_TMS | UPDATE_TRACKING);
 	}
 }
 ?>

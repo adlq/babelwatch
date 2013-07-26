@@ -72,7 +72,7 @@ class StandardResourceExtractor
 
 	public function buildGettextFromAllStrings($rootDir, $extensions = array())
 	{
-		echo "Update po files...\n";
+		echo "Update po files for {$this->repoName}...\n";
 		if (empty($extensions))
 			throw new Exception("No extension specified for string extraction");
 

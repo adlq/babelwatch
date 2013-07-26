@@ -1,6 +1,12 @@
 <?php
+
+define('UPDATE_POT', 1);
+define('UPDATE_TMS', 2);
+define('UPDATE_TRACKING', 4);
+
 class Babelwatch
 {
+
 	private $repoName;
 	private $repoPath;
 	private $assetPath;
@@ -76,12 +82,26 @@ class Babelwatch
 
 	/**
 	 * Watch over Babel
+	 *
+	 * @param string $rootDir The name of the directory
+	 * containing all the files that we have to parse
+	 * @param array $extensions Array containg all the
+	 * extensions to take into account
+	 * @param int $operations Flags specifying which operations
+	 * to execute
 	 */
-	public function run($rootDir, $extentions)
+	public function run($rootDir, $extentions, $operations = 7)
 	{
-		$potFiles = $this->resourceExtractor->buildGettextFiles($rootDir, $extentions);
-		//$this->updateTMS($potFiles['new']);
-		//$this->updateTracking($potFiles['old'], $potFiles['new']);
+		$opArray = array(UPDATE_POT, UPDATE_TMS, UPDATE_TRACKING);
+
+		if (($operations & UPDATE_POT) === UPDATE_POT)
+			$potFiles = $this->resourceExtractor->buildGettextFiles($rootDir, $extentions);
+
+		if (($operations & UPDATE_TMS) === UPDATE_TMS)
+			$this->updateTMS($potFiles['new']);
+
+		if (($operations & UPDATE_TRACKING) === UPDATE_TRACKING)
+			$this->updateTracking($potFiles['old'], $potFiles['new']);
 	}
 
 	/**
