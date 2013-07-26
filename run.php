@@ -25,10 +25,7 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 			$GLOBALS['conf']['mysql'],
 			$resUpdater);
 
-		if (isset($repoInfo['sourceFolder']) && isset($repoInfo['extensions']) && isset($repoInfo['operations']))
-			$tracker->run($repoInfo['sourceFolder'], $repoInfo['extensions'], $repoInfo['operations']);
-		else
-			throw new Exception("Missing parameters in conf.php for repo $repoName");
+		$tracker->run($repoInfo['sourceFolder'], $repoInfo['extensions'], $repoInfo['operations']);
 	}
 }
 ?>

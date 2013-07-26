@@ -33,6 +33,8 @@ class Babelwatch
 				$dbConf,
 				$resourceExtractor)
 	{
+		$this->checkConfig();
+
 		$this->repoName = $repoName;
 		$this->repoPath = $repoPath;
 		$this->assetPath = $assetPath;
@@ -43,8 +45,59 @@ class Babelwatch
 
 		$this->dbInitScript = "babelwatch.sql";
 		$this->prepareDatabase();
+
 	}
 
+	/**
+	 * Check conf.php for missing parameters
+	 *
+	 * @throws Exception
+	 */
+	private function checkConfig()
+	{
+		if (!array_key_exists('mysql', $GLOBALS))
+			throw new Exception('No MySQL configuration found in conf.php');
+
+		if (!array_key_exists('host', $GLOBALS['mysql'])
+			|| !array_key_exists('user', $GLOBALS['mysql'])
+			|| !array_key_exists('pwd', $GLOBALS['mysql'])
+			|| !array_key_exists('db', $GLOBALS['mysql']))
+			throw new Exception('Missing parameter in MySQL configuration. Please refer to conf_sample.php');
+
+		if (!array_key_exists('repo', $GLOBALS) && is_array($GLOBALS['repo']))
+			throw new Exception("No repository configuration found in conf.php");
+
+		foreach ($GLOBALS['repo'] as $repo)
+		{
+			if (!is_array($repo))
+				throw new Exception('Each entry in $GLOBALS[\'repo\'] must be an array');
+
+			if (!array_key_exists('active', $GLOBALS['repo'])
+			|| !array_key_exists('operations', $GLOBALS['repo'])
+			|| !array_key_exists('repoPath', $GLOBALS['repo'])
+			|| !array_key_exists('sourceFolder', $GLOBALS['repo'])
+			|| !array_key_exists('extensions', $GLOBALS['repo'])
+			|| !array_key_exists('resourceExtractorClass', $GLOBALS['repo'])
+			|| !array_key_exists('projectSlug', $GLOBALS['repo'])
+			|| !array_key_exists('iterationSlug', $GLOBALS['repo'])
+			|| !array_key_exists('options', $GLOBALS['repo'])
+			|| !array_key_exists('sourceDocName', $GLOBALS['repo']))
+				throw new Exception('Missing parameter in repository configuration. Please refer to conf_sample.php');
+		}
+
+		if (!array_key_exists('assetPath', $GLOBALS))
+			throw new Exception('No asset path found in conf.php. This is where the PO/POT files will be stored');
+
+		if (!array_key_exists('tmsToolkitPath', $GLOBALS))
+			throw new Exception('No path to TMS toolkit found in conf.php.');
+
+		if (!array_key_exists('pophpPath', $GLOBALS))
+			throw new Exception('No path to pophp found in conf.php');
+	}
+
+	/**
+	 * Create necessary tables & Initialize database handle
+	 */
 	private function prepareDatabase()
 	{
 		$this->dbHandle = new PDO(
@@ -147,7 +200,7 @@ class Babelwatch
 		// Update the source entries on Zanata!
 		$zanataToolkit = new ZanataPHPToolkit($user, $apiKey, $projectSlug, $iterationSlug, $zanataUrl, true);
 
-		$zanataToolkit->pushPotEntries($newPot, 'en-GB');
+		$zanataToolkit->pushPotEntries($newPot, $GLOBALS['repo'][$this->repoName]['sourceDocName'], 'en-GB');
 		echo "Done\n";
 	}
 
