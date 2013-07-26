@@ -207,9 +207,9 @@ class Babelwatch
 		require_once($this->tmsToolkitPath . 'conf.php');
 		require_once($this->tmsToolkitPath . 'ZanataPHPToolkit.php');
 
-		$zanataUrl = $ZANATA['conf']['zanata']['url'];
-		$user = $ZANATA['conf']['zanata']['user'];
-		$apiKey = $ZANATA['conf']['zanata']['apiKey'];
+		$zanataUrl = $GLOBALS['conf']['zanata']['url'];
+		$user = $GLOBALS['conf']['zanata']['user'];
+		$apiKey = $GLOBALS['conf']['zanata']['apiKey'];
 		$projectSlug = '';
 		$iterationSlug = '';
 
