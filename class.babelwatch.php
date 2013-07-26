@@ -83,16 +83,31 @@ class Babelwatch
 			|| !array_key_exists('options', $repoInfo)
 			|| !array_key_exists('sourceDocName', $repoInfo))
 				throw new Exception("Missing parameter in configuration for repository $repo. Please refer to conf_sample.php");
+
+			if (!file_exists($repoInfo['repoPath']))
+				throw new Exception('Specified repository path is invalid. No such directory');
+
+			if (!file_exists($repoInfo['repoPath'] . $repoInfo['sourceFolder']))
+				throw new Exception('Specified asset path is invalid. No such directory');
 		}
 
 		if (!array_key_exists('assetPath', $GLOBALS['conf']))
 			throw new Exception('No asset path found in conf.php. This is where the PO/POT files will be stored');
 
+		if (!file_exists($GLOBALS['conf']['assetPath']))
+			throw new Exception('Specified asset path is invalid. No such directory');
+
 		if (!array_key_exists('tmsToolkitPath', $GLOBALS['conf']))
 			throw new Exception('No path to TMS toolkit found in conf.php.');
 
+		if (!file_exists($GLOBALS['conf']['tmsToolkitPath']))
+			throw new Exception('Specified TMS toolkit path is invalid. No such directory');
+
 		if (!array_key_exists('pophpPath', $GLOBALS['conf']))
 			throw new Exception('No path to pophp found in conf.php');
+
+		if (!file_exists($GLOBALS['conf']['pophpPath']))
+			throw new Exception('Specified pophp path is invalid. No such directory');
 	}
 
 	/**
@@ -144,7 +159,19 @@ class Babelwatch
 		$opArray = array(UPDATE_POT, UPDATE_TMS, UPDATE_TRACKING);
 
 		if (($operations & UPDATE_POT) === UPDATE_POT)
+		{
 			$potFiles = $this->resourceExtractor->buildGettextFiles($rootDir, $extentions);
+
+			if (($operations & UPDATE_TMS) === UPDATE_TMS)
+				$this->updateTMS($potFiles['new']);
+
+			if (($operations & UPDATE_TRACKING) === UPDATE_TRACKING)
+				$this->updateTracking($potFiles['old'], $potFiles['new']);
+
+			return;
+		}
+
+		$potFiles = $this->resourceExtractor->getGettextFilesPath();
 
 		if (($operations & UPDATE_TMS) === UPDATE_TMS)
 			$this->updateTMS($potFiles['new']);

@@ -188,4 +188,14 @@ class StandardResourceExtractor
 			throw new Exception("Cannot open $file to check gettext entries");
 		return (file_get_contents($file) !== $this->poUtils->getGettextHeader());
 	}
+
+	/**
+	 * Return full path to the old and new POT files
+	 */
+	public function getGettextFilesPath()
+	{
+		return array(
+			'old' => $this->oldPotFileName,
+			'new' => $this->potFileName);
+	}
 }
