@@ -18,6 +18,7 @@ class StandardResourceExtractor
 	private $tempFrPoFile;
 
 	public static $poUtils;
+	public static $options;
 
 	public function __construct($repoName, $repoPath, $assetPath, $pophpPath, $options = array())
 	{
@@ -27,6 +28,7 @@ class StandardResourceExtractor
 		$this->pophpPath = $pophpPath;
 		require_once($this->pophpPath . 'POUtils.php');
 		$this->poUtils = new POUtils();
+		$this->options = $options;
 
 		/**
 		 * Directory containing .pot files
@@ -143,8 +145,8 @@ class StandardResourceExtractor
 
 		echo "Done\n";
 		return array(
-			'oldPot' => $this->oldPotFileName,
-			'newPot' => $this->potFileName);
+			'old' => $this->oldPotFileName,
+			'new' => $this->potFileName);
 	}
 
 	/**

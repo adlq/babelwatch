@@ -10,6 +10,26 @@ class SubProjectResourceExtractor extends StandardResourceExtractor implements I
 					throw new Exception("No extension specified for string extraction");
 
 		$potFiles = $this->buildGettextFromAllStrings($rootDir, $extensions);
-		$this->poUtils->compare($potFiles['newPot'], $potFiles['newPot']);
+		if (isset($this->options['refPot']))
+		{
+			$this->extractExclusive($potFiles['new']);
+			$this->extractExclusive($potFiles['old']);
+		}
+
+		return $potFiles;
+	}
+
+	private function extractExclusive($potFile)
+	{
+		// Generate latest POT file
+		$diff = $this->poUtils->compare($potFile, $this->options['refPot']);
+
+		foreach($diff['firstOnly'] as $entry)
+		{
+			$res .= $entry->__toString();
+		}
+
+		$this->poUtils->initGettextFile($potFile);
+		file_put_contents($potFile, $res, FILE_APPEND);
 	}
 }

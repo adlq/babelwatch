@@ -10,5 +10,7 @@ class ProjectResourceExtractor extends StandardResourceExtractor implements IRes
 					throw new Exception("No extension specified for string extraction");
 
 		$potFiles = $this->buildGettextFromAllStrings($rootDir, $extensions);
+
+		return $potFiles;
 	}
 }

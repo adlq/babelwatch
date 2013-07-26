@@ -80,8 +80,8 @@ class Babelwatch
 	public function run($rootDir, $extentions)
 	{
 		$potFiles = $this->resourceExtractor->buildGettextFiles($rootDir, $extentions);
-		//$this->updateTMS($potFiles['newPot']);
-		//$this->updateTracking($potFiles['oldPot'], $potFiles['newPot']);
+		//$this->updateTMS($potFiles['new']);
+		//$this->updateTracking($potFiles['old'], $potFiles['new']);
 	}
 
 	/**
