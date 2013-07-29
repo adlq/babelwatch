@@ -3,7 +3,7 @@
 -- Server version:               5.5.24 - MySQL Community Server (GPL)
 -- Server OS:                    Win32
 -- HeidiSQL version:             6.0.0.3991
--- Date/time:                    2013-07-24 15:40:52
+-- Date/time:                    2013-07-29 16:44:52
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -18,7 +18,7 @@ USE `babelwatch`;
 -- Dumping structure for table babelwatch.bw_changeset
 CREATE TABLE IF NOT EXISTS `bw_changeset` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
-  `hg_id` int(10) NOT NULL,
+  `hg_id` binary(20) NOT NULL,
   `repo_id` int(10) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `hg_id_repo_id` (`hg_id`,`repo_id`),

@@ -252,7 +252,7 @@ class Babelwatch
 		// Note: the tip designates the last changeset, not the version of the code
 		// The code version is revision '.'
 //		$user = trim(shell_exec('hg log -r . | grep -G "^user" | sed "s/^user:[[:space:]]*//g"'));
-		$changeset = trim(shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
+		$changeset = trim(shell_exec('hg log --debug -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
 
 		$repoId = $this->updateRepo();
 		$changesetId = $this->updateChangeset($changeset, $repoId);
@@ -306,9 +306,9 @@ class Babelwatch
 		echo "\tUpdate changeset...";
 		// Create the changeset and bind it to the repo
 		$sqlNewChangeset =
-				'INSERT INTO bw_changeset (hg_id, repo_id)
-					VALUES (:changeset, :repoId)
-					ON DUPLICATE KEY UPDATE hg_id = hg_id';
+				"INSERT INTO bw_changeset (hg_id, repo_id)
+					VALUES (UNHEX(:changeset), :repoId)
+					ON DUPLICATE KEY UPDATE hg_id = hg_id";
 		$queryNewChangeset = $this->dbHandle->prepare($sqlNewChangeset);
 		$queryNewChangeset->bindParam(':changeset', $changeset, PDO::PARAM_INT);
 		$queryNewChangeset->bindParam(':repoId', $repoId, PDO::PARAM_STR);
@@ -316,10 +316,10 @@ class Babelwatch
 
 		// Check changeset
 		$sqlChangesetCheck =
-				'SELECT * FROM bw_changeset
-					WHERE hg_id = :changeset
+				"SELECT * FROM bw_changeset
+					WHERE hg_id = UNHEX(:changeset)
 					AND repo_id = :repoId
-					LIMIT 0,1';
+					LIMIT 0,1";
 		$queryChangesetCheck = $this->dbHandle->prepare($sqlChangesetCheck);
 		$queryChangesetCheck->bindParam(':changeset', $changeset, PDO::PARAM_INT);
 		$queryChangesetCheck->bindParam(':repoId', $repoId, PDO::PARAM_INT);
