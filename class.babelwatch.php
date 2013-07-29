@@ -252,7 +252,7 @@ class Babelwatch
 		// Note: the tip designates the last changeset, not the version of the code
 		// The code version is revision '.'
 //		$user = trim(shell_exec('hg log -r . | grep -G "^user" | sed "s/^user:[[:space:]]*//g"'));
-		$changeset = trim(shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
+		$changeset = trim(shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
 
 		$repoId = $this->updateRepo();
 		$changesetId = $this->updateChangeset($changeset, $repoId);
