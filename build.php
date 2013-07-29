@@ -11,7 +11,8 @@ $repoName = $argv[1];
 
 if (array_key_exists($repoName, $GLOBALS['conf']['repo']))
 {
-	if ($GLOBALS['conf']['repo'][$repoName]['active'])
+	$repoInfo = $GLOBALS['conf']['repo'][$repoName];
+	if ($repoInfo['active'])
 	{
 		$resUpdater = new $repoInfo['resourceExtractorClass'](
 			$repoName,
