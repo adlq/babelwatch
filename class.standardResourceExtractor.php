@@ -115,6 +115,11 @@ class StandardResourceExtractor
 		}
 
 		$potPieces = implode(" ", $potLists);
+
+		// Uniquify
+		foreach ($extensions as $ext)
+			exec("msguniq --sort-output --add-location --no-wrap {$potLists[$ext]} -o {$potLists[$ext]} 1> nul 2>&1");
+
 		exec("msgcat --sort-output --add-location --no-wrap $potPieces -o {$this->potFileName} 1> nul 2>&1");
 
 		exec("msguniq --sort-output --add-location --no-wrap {$this->potFileName} -o {$this->potFileName} 1> nul 2>&1");
