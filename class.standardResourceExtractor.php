@@ -143,7 +143,7 @@ class StandardResourceExtractor
 			copy($this->refPo, $this->frPoFile);
 		}
 
-		echo "\n===\n";
+		echo "===\n";
 		return array(
 			'old' => $this->oldPotFileName,
 			'new' => $this->potFileName);

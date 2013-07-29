@@ -223,7 +223,7 @@ class Babelwatch
 		$zanataToolkit = new ZanataPHPToolkit($user, $apiKey, $projectSlug, $iterationSlug, $zanataUrl, true);
 
 		$zanataToolkit->pushPotEntries($newPot, $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName'], 'en-GB');
-		echo "\n===\n";
+		echo "===\n";
 	}
 
 	/**
@@ -258,7 +258,7 @@ class Babelwatch
 		$changesetId = $this->updateChangeset($changeset, $repoId);
 		$this->updateStringState($changesetId, $newStrings, 'a');
 		$this->updateStringState($changesetId, $removedStrings, 'r');
-		echo "\n===\n";
+		echo "===\n";
 	}
 
 	/**
