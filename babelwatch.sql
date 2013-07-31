@@ -1,9 +1,9 @@
 -- --------------------------------------------------------
--- Host:                         127.0.0.1
--- Server version:               5.5.24 - MySQL Community Server (GPL)
--- Server OS:                    Win32
+-- Host:                         svrtest10
+-- Server version:               5.5.30-30.1-log - Percona Server (GPL), Release 30.1
+-- Server OS:                    Linux
 -- HeidiSQL version:             6.0.0.3991
--- Date/time:                    2013-07-29 16:44:52
+-- Date/time:                    2013-07-31 13:19:41
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -20,9 +20,12 @@ CREATE TABLE IF NOT EXISTS `bw_changeset` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `hg_id` binary(20) NOT NULL,
   `repo_id` int(10) DEFAULT NULL,
+  `user_id` int(10) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `hg_id_repo_id` (`hg_id`,`repo_id`),
   KEY `FK_bw_changeset_bw_repo` (`repo_id`),
+  KEY `FK_bw_changeset_bw_user` (`user_id`),
+  CONSTRAINT `FK_bw_changeset_bw_user` FOREIGN KEY (`user_id`) REFERENCES `bw_user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `FK_bw_changeset_bw_repo` FOREIGN KEY (`repo_id`) REFERENCES `bw_repo` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
@@ -90,6 +93,16 @@ CREATE TABLE IF NOT EXISTS `bw_string_ref` (
   KEY `FK__bw_reference` (`ref_id`),
   CONSTRAINT `FK__bw_string` FOREIGN KEY (`string_id`) REFERENCES `bw_string` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `FK__bw_reference` FOREIGN KEY (`ref_id`) REFERENCES `bw_reference` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
+
+-- Data exporting was unselected.
+
+
+-- Dumping structure for table babelwatch.bw_user
+CREATE TABLE IF NOT EXISTS `bw_user` (
+  `id` int(10) NOT NULL AUTO_INCREMENT,
+  `name` varchar(100) COLLATE utf8_bin DEFAULT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 -- Data exporting was unselected.

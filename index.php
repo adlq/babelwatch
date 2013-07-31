@@ -1,3 +1,11 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<link rel="stylesheet" href="style.css">
+	<title>Localisation Dashboard</title>
+</head>
+<body>
 <?php
 require_once('conf.php');
 require_once('class.babelwatch.php');
@@ -20,49 +28,98 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 			$GLOBALS['conf']['tmsToolkitPath'],
 			$GLOBALS['conf']['pophpPath'],
 			$GLOBALS['conf']['mysql']);
-		echo "<h1>$repoName</h1><br><ul>";
+
 		$log = $tracker->log();
 
-		foreach($log as $changeset => $changes)
+		if (!empty($log))
 		{
-			if (array_key_exists('a', $changes))
+			echo <<<REPO
+			<h1>$repoName</h1><br>
+			<ul>
+REPO;
+			foreach($log as $changeset => $changesetInfo)
 			{
-				echo "<li>$changeset<br>";
-				foreach($changes['a'] as $string)
+				echo <<<TABLE
+				<table class='changeset'>
+					<th>+</th>
+					<th>-</th>
+TABLE;
+
+				$stringsStates = array('a' => array(), 'r' => array());
+
+				if (array_key_exists('a', $changesetInfo))
 				{
-					$sql = 'select tf.potEntryData_id, tf.content0
-								from HTextFlow as tf
-								inner join HDocument as doc
-									on tf.document_id = doc.id
-								inner join HProjectIteration as it
-									on it.id = doc.project_iteration_id
-								inner join HProject as project
-									on project.id = it.project_id
-								WHERE doc.name LIKE :doc
-								AND project.slug LIKE :project
-								AND it.slug LIKE :iteration
-								AND tf.content0 LIKE :string
-								LIMIT 0,1';
+					chdir ($repoInfo['repoPath']);
 
-					$query = $dbHandle->prepare($sql);
-					$query->bindParam(':project', $repoInfo['projectSlug']);
-					$query->bindParam(':iteration', $repoInfo['iterationSlug']);
-					$query->bindParam(':doc', $repoInfo['sourceDocName']);
-					$query->bindParam(':string', $string);
+					$user = htmlentities($changesetInfo['user']);
 
-					$query->execute();
+					echo "<li>Revision [$changeset]($user)<br>";
+					foreach ($changesetInfo['a'] as $string)
+					{
+						$sql = 'SELECT tf.potEntryData_id, tf.content0
+									FROM HTextFlow as tf
+									INNER JOIN HDocument AS doc
+										ON tf.document_id = doc.id
+									INNER JOIN HProjectIteration AS it
+										ON it.id = doc.project_iteration_id
+									INNER JOIN HProject AS project
+										ON project.id = it.project_id
+									WHERE doc.name LIKE :doc
+									AND project.slug LIKE :project
+									AND it.slug LIKE :iteration
+									AND tf.content0 LIKE :string
+									LIMIT 0,1';
 
-					$row = $query->fetch(PDO::FETCH_ASSOC);
+						$query = $dbHandle->prepare($sql);
+						$query->bindParam(':project', $repoInfo['projectSlug']);
+						$query->bindParam(':iteration', $repoInfo['iterationSlug']);
+						$query->bindParam(':doc', $repoInfo['sourceDocName']);
+						$query->bindParam(':string', $string);
 
-					$resId = $row['potEntryData_id'];
+						$query->execute();
 
-					$url = textFlowUrl($repoInfo['projectSlug'], $repoInfo['iterationSlug'], $repoInfo['sourceDocName'], $resId);
-					echo "<a href=$url>\"$string\"</a><br>";
+						$row = $query->fetch(PDO::FETCH_ASSOC);
+						$resId = $row['potEntryData_id'];
+
+						$url = textFlowUrl($repoInfo['projectSlug'], $repoInfo['iterationSlug'], $repoInfo['sourceDocName'], $resId);
+
+						array_push($stringsStates['a'], array('string' => $string, 'url' => $url));
+					}
+				}
+
+				if (array_key_exists('r', $changesetInfo))
+				{
+					foreach ($changesetInfo['r'] as $string)
+					{
+						array_push($stringsStates['r'], array('string' => $string));
+					}
+				}
+
+				$addedStrings = new ArrayIterator($stringsStates['a']);
+				$removedStrings = new ArrayIterator($stringsStates['r']);
+
+				$rows = new MultipleIterator(MultipleIterator::MIT_NEED_ANY|MultipleIterator::MIT_KEYS_ASSOC);
+				$rows->attachIterator($addedStrings, 'added');
+				$rows->attachIterator($removedStrings, 'removed');
+
+				foreach($rows as $row)
+				{
+					$addedRow = isset($row['added']) ? "<td class='addedRow'><a href={$row['added']['url']}>\"{$row['added']['string']}\"</a></td>" : '';
+					$removedRow = isset($row['removed']) ? "<td class='removedRow'>\"{$row['removed']['string']}\"</td>" : '';
+
+					echo <<<ROW
+					<tr>
+					$addedRow
+					$removedRow
+					</tr>
+ROW;
 				}
 				echo "</li>";
 			}
+			echo "</ul>";
 		}
-		echo "</ul>";
 	}
 }
 ?>
+</body>
+</html>

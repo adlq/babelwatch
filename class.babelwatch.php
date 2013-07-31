@@ -251,11 +251,12 @@ class Babelwatch
 		chdir($this->repoPath);
 		// Note: the tip designates the last changeset, not the version of the code
 		// The code version is revision '.'
-//		$user = trim(shell_exec('hg log -r . | grep -G "^user" | sed "s/^user:[[:space:]]*//g"'));
+		$user = trim(shell_exec('hg log -r . | grep -G "^user" | sed "s/^user:[[:space:]]*//g"'));
 		$changeset = trim(shell_exec('hg log --debug -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
+		$summary = trim(shell_exec('hg log -r . | grep -G "^summary" | sed "s/^summary:[[:space:]]*//g"'));
 
 		$repoId = $this->updateRepo();
-		$changesetId = $this->updateChangeset($changeset, $repoId);
+		$changesetId = $this->updateChangeset($changeset, $user, $repoId, $summary);
 		$this->updateStringState($changesetId, $newStrings, 'a');
 		$this->updateStringState($changesetId, $removedStrings, 'r');
 		echo "===\n";
@@ -298,20 +299,44 @@ class Babelwatch
 	 * Create the changeset if needed.
 	 *
 	 * @param int $changeset The changeset number
+	 * @param string $user The name of the contributor
 	 * @param int $repoId The id of the repo to which the changeset belong
+	 * @param string $summary The summary of the changeset
 	 * @return type
 	 */
-	private function updateChangeset($changeset, $repoId)
+	private function updateChangeset($changeset, $user, $repoId, $summary)
 	{
 		echo "\tUpdate changeset...";
+
+		// Create new user entry if he/she does not exist yet
+		$sqlNewUser = "INSERT INTO bw_user (name)
+					VALUES (:name)
+					ON DUPLICATE KEY UPDATE id = id";
+		$queryNewUser = $this->dbHandle->prepare($sqlNewUser);
+		$queryNewUser->bindParam(':name', $user, PDO::PARAM_STR);
+		$queryNewUser->execute();
+
+		// Select the user
+		$sqlUserCheck =
+				"SELECT * FROM bw_user
+					WHERE name LIKE :name
+					LIMIT 0,1";
+		$queryUserCheck = $this->dbHandle->prepare($sqlUserCheck);
+		$queryUserCheck->bindParam(':name', $user, PDO::PARAM_STR);
+		$queryUserCheck->execute();
+
+		$userRow = $queryUserCheck->fetch(PDO::FETCH_ASSOC);
+
 		// Create the changeset and bind it to the repo
 		$sqlNewChangeset =
-				"INSERT INTO bw_changeset (hg_id, repo_id)
-					VALUES (UNHEX(:changeset), :repoId)
+				"INSERT INTO bw_changeset (hg_id, repo_id, user_id, summary)
+					VALUES (UNHEX(:changeset), :repoId, :userId, :summary)
 					ON DUPLICATE KEY UPDATE hg_id = hg_id";
 		$queryNewChangeset = $this->dbHandle->prepare($sqlNewChangeset);
 		$queryNewChangeset->bindParam(':changeset', $changeset, PDO::PARAM_INT);
-		$queryNewChangeset->bindParam(':repoId', $repoId, PDO::PARAM_STR);
+		$queryNewChangeset->bindParam(':repoId', $repoId, PDO::PARAM_INT);
+		$queryNewChangeset->bindParam(':userId', $userRow['id'], PDO::PARAM_INT);
+		$queryNewChangeset->bindParam(':summary', $summary, PDO::PARAM_STR);
 		$queryNewChangeset->execute();
 
 		// Check changeset
@@ -454,11 +479,12 @@ class Babelwatch
 	public function log()
 	{
 		$sql =
-				'SELECT HEX(chg.hg_id) as chgId, string.content, glue.action
+				'SELECT HEX(chg.hg_id) as chgId, chg.summary, user.name, string.content, glue.action
 					FROM bw_changeset_string AS glue
 					JOIN bw_string AS string ON glue.string_id = string.id
 					JOIN bw_changeset AS chg ON glue.changeset_id = chg.id
 					JOIN bw_repo AS repo ON chg.repo_id = repo.id
+					JOIN bw_user AS user ON chg.user_id = user.id
 					WHERE repo.name LIKE :repoName';
 		$query = $this->dbHandle->prepare($sql);
 		$query->bindParam(':repoName', $this->repoName);
@@ -471,9 +497,11 @@ class Babelwatch
 			$changeset = strtolower($row['chgId']);
 			$action = $row['action'];
 			$string = $row['content'];
+			$user = $row['name'];
+			$summary = $row['summary'];
 
 			if (!array_key_exists($changeset, $logs))
-					$logs[$changeset] = array();
+					$logs[$changeset] = array('user' => $user, 'summary' => $summary);
 
 			if (!array_key_exists($action, $logs[$changeset]))
 					$logs[$changeset][$action] = array();
