@@ -503,7 +503,8 @@ class Babelwatch
 					JOIN bw_changeset AS chg ON glue.changeset_id = chg.id
 					JOIN bw_repo AS repo ON chg.repo_id = repo.id
 					JOIN bw_user AS user ON chg.user_id = user.id
-					WHERE repo.name LIKE :repoName';
+					WHERE repo.name LIKE :repoName
+					ORDER BY chg.id DESC';
 		$query = $this->dbHandle->prepare($sql);
 		$query->bindParam(':repoName', $this->repoName);
 		$query->execute();
