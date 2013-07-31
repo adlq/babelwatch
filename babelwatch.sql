@@ -3,7 +3,7 @@
 -- Server version:               5.5.30-30.1-log - Percona Server (GPL), Release 30.1
 -- Server OS:                    Linux
 -- HeidiSQL version:             6.0.0.3991
--- Date/time:                    2013-07-31 13:19:41
+-- Date/time:                    2013-07-31 17:06:28
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -21,12 +21,13 @@ CREATE TABLE IF NOT EXISTS `bw_changeset` (
   `hg_id` binary(20) NOT NULL,
   `repo_id` int(10) DEFAULT NULL,
   `user_id` int(10) DEFAULT NULL,
+  `summary` varchar(500) COLLATE utf8_bin DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `hg_id_repo_id` (`hg_id`,`repo_id`),
   KEY `FK_bw_changeset_bw_repo` (`repo_id`),
   KEY `FK_bw_changeset_bw_user` (`user_id`),
-  CONSTRAINT `FK_bw_changeset_bw_user` FOREIGN KEY (`user_id`) REFERENCES `bw_user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `FK_bw_changeset_bw_repo` FOREIGN KEY (`repo_id`) REFERENCES `bw_repo` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `FK_bw_changeset_bw_repo` FOREIGN KEY (`repo_id`) REFERENCES `bw_repo` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `FK_bw_changeset_bw_user` FOREIGN KEY (`user_id`) REFERENCES `bw_user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 -- Data exporting was unselected.
