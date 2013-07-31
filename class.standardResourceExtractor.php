@@ -56,14 +56,16 @@ class StandardResourceExtractor
 		if (!file_exists($this->frPoPath))
 			mkdir($this->frPoPath);
 
-		$this->refPo = $this->repoPath
-				. 'source'
-				. DIRECTORY_SEPARATOR
-				. 'locales'
-				. DIRECTORY_SEPARATOR
-				. 'fr-FR'
-				. DIRECTORY_SEPARATOR
-				. 'lang.po';
+		$frPath = $this->repoPath . 'source' . DIRECTORY_SEPARATOR . 'locales' . DIRECTORY_SEPARATOR . 'fr-FR' . DIRECTORY_SEPARATOR . 'lang.po';
+		if (file_exists($frPath))
+			$this->refPo = $this->repoPath
+					. 'source'
+					. DIRECTORY_SEPARATOR
+					. 'locales'
+					. DIRECTORY_SEPARATOR
+					. 'fr-FR'
+					. DIRECTORY_SEPARATOR
+					. 'lang.po';
 
 		$this->frPoFile = $this->frPoPath . $this->repoName . '.po';
 		if (!file_exists($this->frPoFile))
@@ -134,21 +136,24 @@ class StandardResourceExtractor
 			unlink($this->fileLists[$ext]);
 		}
 
-		if ($this->hasGettextEntries($this->frPoFile))
+		if (isset($this->refPo))
 		{
-			// Initial processing of the fr-FR PO file
-			// Temporary solution to keep the FR bootstrap file up-to-date
-			// Once we bootstrap the FR translations, we can delete these lines
-			exec("msguniq --use-first {$this->frPoFile} -o {$this->frPoFile} 1> nul 2>&1");
+			if ($this->hasGettextEntries($this->frPoFile))
+			{
+				// Initial processing of the fr-FR PO file
+				// Temporary solution to keep the FR bootstrap file up-to-date
+				// Once we bootstrap the FR translations, we can delete these lines
+				exec("msguniq --use-first {$this->frPoFile} -o {$this->frPoFile} 1> nul 2>&1");
 
-			// Merge new strings with the fr-FR PO File
-			// Temporary solution to keep the FR bootstrap file up-to-date
-			// Once we bootstrap the FR translations, we can delete these lines
-			exec("msgmerge {$this->frPoFile} {$this->refPo} --update --no-wrap --add-location --sort-output 1> nul 2>&1");
-		}
-		else
-		{
-			copy($this->refPo, $this->frPoFile);
+				// Merge new strings with the fr-FR PO File
+				// Temporary solution to keep the FR bootstrap file up-to-date
+				// Once we bootstrap the FR translations, we can delete these lines
+				exec("msgmerge {$this->frPoFile} {$this->refPo} --update --no-wrap --add-location --sort-output 1> nul 2>&1");
+			}
+			else
+			{
+				copy($this->refPo, $this->frPoFile);
+			}
 		}
 
 		echo "===\n";
