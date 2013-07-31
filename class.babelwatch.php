@@ -156,21 +156,39 @@ class Babelwatch
 	 */
 	public function run($rootDir, $extentions, $operations = 7)
 	{
+		chdir($this->repoPath);
 		$opArray = array(UPDATE_POT, UPDATE_TMS, UPDATE_TRACKING);
 
 		$potFiles = $this->resourceExtractor->getGettextFilesPath();
 
 		echo "\nWORKING ON " . strtoupper($this->repoName) . "\n";
 
-		if (($operations & UPDATE_POT) === UPDATE_POT)
-			$potFiles = $this->resourceExtractor->buildGettextFiles($rootDir, $extentions);
+		// Retrieve incoming revisions
+		$revisions = explode("\n", shell_exec('hg log -r .:tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
 
-		if (($operations & UPDATE_TMS) === UPDATE_TMS)
-			$this->updateTMS($potFiles['new']);
+		// Retrieve current revision
+		$currentRev = trim(shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
 
-		if (($operations & UPDATE_TRACKING) === UPDATE_TRACKING)
-			$this->updateTracking($potFiles['old'], $potFiles['new']);
+		// Iterate over all the incoming revisions
+		foreach ($revisions as $rev)
+		{
+			if ($rev !== '' && $rev != $currentRev)
+			{
+				// Update and then execute operations
+				echo "Updating to revision $rev...\n";
+				exec("hg update --clean --rev $rev");
 
+				if (($operations & UPDATE_POT) === UPDATE_POT)
+					$potFiles = $this->resourceExtractor->buildGettextFiles($rootDir, $extentions);
+
+				if (($operations & UPDATE_TMS) === UPDATE_TMS)
+					$this->updateTMS($potFiles['new']);
+
+				if (($operations & UPDATE_TRACKING) === UPDATE_TRACKING)
+					$this->updateTracking($potFiles['old'], $potFiles['new']);
+
+			}
+		}
 		echo "\nWORK ON " . strtoupper($this->repoName) . " DONE\n";
 		return;
 	}
