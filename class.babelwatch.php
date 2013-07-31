@@ -457,8 +457,11 @@ class Babelwatch
 				'SELECT HEX(chg.hg_id) as chgId, string.content, glue.action
 					FROM bw_changeset_string AS glue
 					JOIN bw_string AS string ON glue.string_id = string.id
-					JOIN bw_changeset AS chg ON glue.changeset_id = chg.id';
+					JOIN bw_changeset AS chg ON glue.changeset_id = chg.id
+					JOIN bw_repo AS repo ON chg.repo_id = repo.id
+					WHERE repo.name LIKE :repoName';
 		$query = $this->dbHandle->prepare($sql);
+		$query->bindParam(':repoName', $this->repoName);
 		$query->execute();
 
 		$logs = array();
