@@ -31,7 +31,7 @@ class Babelwatch
 				$tmsToolkitPath,
 				$poToolkitPath,
 				$dbConf,
-				$resourceExtractor)
+				$resourceExtractor = null)
 	{
 		$this->checkConfig();
 
@@ -454,7 +454,7 @@ class Babelwatch
 	public function log()
 	{
 		$sql =
-				'SELECT chg.hg_id, string.content, glue.action
+				'SELECT HEX(chg.hg_id) as chgId, string.content, glue.action
 					FROM bw_changeset_string AS glue
 					JOIN bw_string AS string ON glue.string_id = string.id
 					JOIN bw_changeset AS chg ON glue.changeset_id = chg.id';
@@ -465,7 +465,7 @@ class Babelwatch
 
 		while($row = $query->fetch(PDO::FETCH_ASSOC))
 		{
-			$changeset = $row['hg_id'];
+			$changeset = strtolower($row['chgId']);
 			$action = $row['action'];
 			$string = $row['content'];
 

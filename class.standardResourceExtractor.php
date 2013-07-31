@@ -105,6 +105,9 @@ class StandardResourceExtractor
 			// Extract gettext strings
 			switch($ext)
 			{
+				case 'm':
+					exec("xgettext --sort-output --add-location --omit-header --no-wrap -c --from-code=utf-8 --force-po --output={$potLists[$ext]} -j -f {$this->fileLists[$ext]} 1> nul 2>&1");
+					break;
 				case 'php':
 					exec("xgettext --sort-output --add-location --omit-header --no-wrap -c --from-code=utf-8 --force-po --output={$potLists[$ext]} -j -k -kEpiLang -kEpiLangKey -kEpilang -kSingleEnquotedEpiLang -kSingleEnquotedEpilang -f {$this->fileLists[$ext]} 1> nul 2>&1");
 					break;

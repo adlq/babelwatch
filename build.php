@@ -34,4 +34,3 @@ if (array_key_exists($repoName, $GLOBALS['conf']['repo']))
 	}
 }
 ?>
-<?php
