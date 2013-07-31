@@ -1,0 +1,24 @@
+.changeset, .addedRow, .removedRow
+{
+	border: 1px solid black;
+}
+
+.addedRow
+{
+	background-color: green;
+	color: white;
+	size: 50%;
+}
+
+.removedRow
+{
+	background-color: red;
+	color: white;
+	size: 50%;
+}
+
+a
+{
+	text-decoration: none;
+	color: white;
+}
