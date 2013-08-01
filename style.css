@@ -1,18 +1,20 @@
 .changeset, .addedRow, .removedRow
 {
 	border: 1px solid black;
+	width: 100%;
+	table-layout: fixed;
 }
 
 .addedRow
 {
-	background-color: green;
+	background-color: #27ae60;
 	color: white;
 	size: 50%;
 }
 
 .removedRow
 {
-	background-color: red;
+	background-color: #c0392b;
 	color: white;
 	size: 50%;
 }

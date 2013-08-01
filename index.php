@@ -52,8 +52,9 @@ TABLE;
 					chdir ($repoInfo['repoPath']);
 
 					$user = htmlentities($changesetInfo['user']);
+					$summary = htmlentities($changesetInfo['summary']);
 
-					echo "<li>Revision [$changeset]($user)<br>";
+					echo "<li><b>$summary</b> [$changeset] (<i>$user</i>)<br><br>";
 					foreach ($changesetInfo['a'] as $string)
 					{
 						$sql = 'SELECT tf.potEntryData_id, tf.content0
@@ -104,17 +105,17 @@ TABLE;
 
 				foreach($rows as $row)
 				{
-					$addedRow = isset($row['added']) ? "<td class='addedRow'><a href={$row['added']['url']}>\"{$row['added']['string']}\"</a></td>" : '';
-					$removedRow = isset($row['removed']) ? "<td class='removedRow'>\"{$row['removed']['string']}\"</td>" : '';
+					$addedRowContent = isset($row['added']) ? "<a href={$row['added']['url']}>\"{$row['added']['string']}\"</a>" : '';
+					$removedRowContent = isset($row['removed']) ? "\"{$row['removed']['string']}\"" : '';
 
 					echo <<<ROW
 					<tr>
-					$addedRow
-					$removedRow
+					<td class='addedRow'>$addedRowContent</td>
+					<td class='removedRow'>$removedRowContent</td>
 					</tr>
 ROW;
 				}
-				echo "</li>";
+				echo "</table></li><br>";
 			}
 			echo "</ul>";
 		}
