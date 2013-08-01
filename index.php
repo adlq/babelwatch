@@ -1,14 +1,11 @@
-<!doctype html>
-<html>
-<head>
-	<meta charset="utf-8">
-	<link rel="stylesheet" href="style.css">
-	<title>Localisation Dashboard</title>
-</head>
-<body>
 <?php
 require_once('conf.php');
 require_once('class.babelwatch.php');
+require_once('class.front.php');
+
+$front = new Front();
+
+$front->echoHeader();
 
 $dbHandle = new PDO('mysql:host=svrtest10;dbname=zanata', 'zanata', 'zanata');
 
@@ -39,13 +36,8 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 REPO;
 			foreach($log as $changeset => $changesetInfo)
 			{
-				echo <<<TABLE
-				<table class='changeset'>
-					<th>+</th>
-					<th>-</th>
-TABLE;
 
-				$stringsStates = array('a' => array(), 'r' => array());
+				$stringTable = array('a' => array(), 'r' => array());
 
 				if (array_key_exists('a', $changesetInfo))
 				{
@@ -84,7 +76,7 @@ TABLE;
 
 						$url = textFlowUrl($repoInfo['projectSlug'], $repoInfo['iterationSlug'], $repoInfo['sourceDocName'], $resId);
 
-						array_push($stringsStates['a'], array('string' => htmlentities($string), 'url' => $url));
+						array_push($stringTable['a'], array('string' => htmlentities($string), 'url' => $url));
 					}
 				}
 
@@ -92,35 +84,15 @@ TABLE;
 				{
 					foreach ($changesetInfo['r'] as $string)
 					{
-						array_push($stringsStates['r'], array('string' => htmlentities($string)));
+						array_push($stringTable['r'], array('string' => htmlentities($string)));
 					}
 				}
 
-				$addedStrings = new ArrayIterator($stringsStates['a']);
-				$removedStrings = new ArrayIterator($stringsStates['r']);
-
-				$rows = new MultipleIterator(MultipleIterator::MIT_NEED_ANY|MultipleIterator::MIT_KEYS_ASSOC);
-				$rows->attachIterator($addedStrings, 'added');
-				$rows->attachIterator($removedStrings, 'removed');
-
-				foreach($rows as $row)
-				{
-					$addedRowContent = isset($row['added']) ? "<a href={$row['added']['url']}>\"{$row['added']['string']}\"</a>" : '';
-					$removedRowContent = isset($row['removed']) ? "\"{$row['removed']['string']}\"" : '';
-
-					echo <<<ROW
-					<tr>
-					<td class='addedRow'>$addedRowContent</td>
-					<td class='removedRow'>$removedRowContent</td>
-					</tr>
-ROW;
-				}
-				echo "</table></li><br>";
+				$front->displayStringTable($stringTable);
 			}
 			echo "</ul>";
 		}
 	}
 }
-?>
-</body>
-</html>
+
+$front->echoFooter();
