@@ -1,9 +1,9 @@
 -- --------------------------------------------------------
--- Host:                         svrtest10
--- Server version:               5.5.30-30.1-log - Percona Server (GPL), Release 30.1
--- Server OS:                    Linux
+-- Host:                         127.0.0.1
+-- Server version:               5.5.24 - MySQL Community Server (GPL)
+-- Server OS:                    Win32
 -- HeidiSQL version:             6.0.0.3991
--- Date/time:                    2013-07-31 17:06:28
+-- Date/time:                    2013-08-01 10:45:21
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS `bw_changeset` (
   `repo_id` int(10) DEFAULT NULL,
   `user_id` int(10) DEFAULT NULL,
   `summary` varchar(500) COLLATE utf8_bin DEFAULT NULL,
+  `tag` varchar(50) COLLATE utf8_bin DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `hg_id_repo_id` (`hg_id`,`repo_id`),
   KEY `FK_bw_changeset_bw_repo` (`repo_id`),
@@ -103,7 +104,8 @@ CREATE TABLE IF NOT EXISTS `bw_string_ref` (
 CREATE TABLE IF NOT EXISTS `bw_user` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) COLLATE utf8_bin DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 -- Data exporting was unselected.

@@ -84,7 +84,7 @@ TABLE;
 
 						$url = textFlowUrl($repoInfo['projectSlug'], $repoInfo['iterationSlug'], $repoInfo['sourceDocName'], $resId);
 
-						array_push($stringsStates['a'], array('string' => $string, 'url' => $url));
+						array_push($stringsStates['a'], array('string' => htmlentities($string), 'url' => $url));
 					}
 				}
 
@@ -92,7 +92,7 @@ TABLE;
 				{
 					foreach ($changesetInfo['r'] as $string)
 					{
-						array_push($stringsStates['r'], array('string' => $string));
+						array_push($stringsStates['r'], array('string' => htmlentities($string)));
 					}
 				}
 

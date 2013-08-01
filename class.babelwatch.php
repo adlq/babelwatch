@@ -165,14 +165,13 @@ class Babelwatch
 
 		// Retrieve incoming revisions
 		$revisions = explode("\n", shell_exec('hg log -r .:tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
-
 		// Retrieve current revision
-		$currentRev = trim(shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
+		$currentRev = trim($revisions[0]);
 
 		// Iterate over all the incoming revisions
 		foreach ($revisions as $rev)
 		{
-			if ($rev !== '' && $rev != $currentRev)
+			if ($rev !== '')
 			{
 				// Update and then execute operations
 				echo "Updating to revision $rev...\n";
@@ -263,18 +262,36 @@ class Babelwatch
 		$newStrings = $diff['secondOnly'];
 		$removedStrings = $diff['firstOnly'];
 
+		print_r($newStrings);
+		print_r($removedStrings);
+
 		echo "new: " . count($newStrings) . ", removed: " . count($removedStrings) ."\n";
 
 		// Retrieve changeset info
 		chdir($this->repoPath);
 		// Note: the tip designates the last changeset, not the version of the code
 		// The code version is revision '.'
-		$user = trim(shell_exec('hg log -r . | grep -G "^user" | sed "s/^user:[[:space:]]*//g"'));
-		$changeset = trim(shell_exec('hg log --debug -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
-		$summary = trim(shell_exec('hg log -r . | grep -G "^summary" | sed "s/^summary:[[:space:]]*//g"'));
+		$logLines = explode("\n", shell_exec('hg log -r . | tail -n +2'));
+
+		$revInfo = array();
+
+		foreach($logLines as $line)
+		{
+			$matches = array();
+			if (preg_match("/(.+):\s+(.+)/", $line, $matches))
+			{
+				$revInfo[$matches[1]] = $matches[2];
+			}
+		}
+		$revInfo['changeset'] = trim(shell_exec('hg log --debug -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
+
+		$tag = array_key_exists('tag', $revInfo) ? $revInfo['tag'] : '';
+
+		print "tag = $tag\n";
+		print_r($revInfo);
 
 		$repoId = $this->updateRepo();
-		$changesetId = $this->updateChangeset($changeset, $user, $repoId, $summary);
+		$changesetId = $this->updateChangeset($revInfo['changeset'], $revInfo['user'], $repoId, $revInfo['summary'], $tag);
 		$this->updateStringState($changesetId, $newStrings, 'a');
 		$this->updateStringState($changesetId, $removedStrings, 'r');
 		echo "===\n";
@@ -320,9 +337,10 @@ class Babelwatch
 	 * @param string $user The name of the contributor
 	 * @param int $repoId The id of the repo to which the changeset belong
 	 * @param string $summary The summary of the changeset
+	 * @param string $tag The tag, if it exists
 	 * @return type
 	 */
-	private function updateChangeset($changeset, $user, $repoId, $summary)
+	private function updateChangeset($changeset, $user, $repoId, $summary, $tag = '')
 	{
 		echo "\tUpdate changeset...";
 
@@ -347,14 +365,15 @@ class Babelwatch
 
 		// Create the changeset and bind it to the repo
 		$sqlNewChangeset =
-				"INSERT INTO bw_changeset (hg_id, repo_id, user_id, summary)
-					VALUES (UNHEX(:changeset), :repoId, :userId, :summary)
+				"INSERT INTO bw_changeset (hg_id, repo_id, user_id, summary, tag)
+					VALUES (UNHEX(:changeset), :repoId, :userId, :summary, :tag)
 					ON DUPLICATE KEY UPDATE hg_id = hg_id";
 		$queryNewChangeset = $this->dbHandle->prepare($sqlNewChangeset);
 		$queryNewChangeset->bindParam(':changeset', $changeset, PDO::PARAM_INT);
 		$queryNewChangeset->bindParam(':repoId', $repoId, PDO::PARAM_INT);
 		$queryNewChangeset->bindParam(':userId', $userRow['id'], PDO::PARAM_INT);
 		$queryNewChangeset->bindParam(':summary', $summary, PDO::PARAM_STR);
+		$queryNewChangeset->bindParam(':tag', $tag, PDO::PARAM_STR);
 		$queryNewChangeset->execute();
 
 		// Check changeset
