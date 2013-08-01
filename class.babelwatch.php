@@ -262,9 +262,6 @@ class Babelwatch
 		$newStrings = $diff['secondOnly'];
 		$removedStrings = $diff['firstOnly'];
 
-		print_r($newStrings);
-		print_r($removedStrings);
-
 		echo "new: " . count($newStrings) . ", removed: " . count($removedStrings) ."\n";
 
 		// Retrieve changeset info
