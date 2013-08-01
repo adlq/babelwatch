@@ -164,8 +164,10 @@ class Babelwatch
 		echo "\nWORKING ON " . strtoupper($this->repoName) . "\n";
 
 		// Retrieve incoming revisions
+		// We have to make sure the current revision is on the main branch
+		// and then we can use -f in hg log to stay on the main branch
 		if (empty($revisions))
-			$revisions = explode("\n", shell_exec('hg log -r .:tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
+			$revisions = explode("\n", shell_exec('hg log -f -r .:tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
 
 		// Iterate over all the incoming revisions
 		foreach ($revisions as $rev)
@@ -180,11 +182,15 @@ class Babelwatch
 					$potFiles = $this->resourceExtractor->buildGettextFiles($rootDir, $extentions);
 
 				if (($operations & UPDATE_TMS) === UPDATE_TMS)
-					$this->updateTMS($potFiles['new']);
+				{
+					// Only update the TMS if there were new or removed strings
+					$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
+					if (!empty($diffStrings['added']) || !empty($diffStrings['removed']))
+						$this->updateTMS($potFiles['new']);
+				}
 
 				if (($operations & UPDATE_TRACKING) === UPDATE_TRACKING)
 					$this->updateTracking($potFiles['old'], $potFiles['new']);
-
 			}
 		}
 		echo "\nWORK ON " . strtoupper($this->repoName) . " DONE\n";
@@ -251,17 +257,8 @@ class Babelwatch
 	public function updateTracking($oldPot, $newPot)
 	{
 		echo "===\nUpdating tracking for {$this->repoName}...\n";
-		require_once($this->poToolkitPath . 'POUtils.php');
 
-		// Compare the new and old pot files
-		$utils = new POUtils();
-		$diff = $utils->compare($oldPot, $newPot);
-
-		// Retrieve added/removed strings
-		$newStrings = $diff['secondOnly'];
-		$removedStrings = $diff['firstOnly'];
-
-		echo "new: " . count($newStrings) . ", removed: " . count($removedStrings) ."\n";
+		$diffStrings = $this->comparePots($oldPot, $newPot);
 
 		// Retrieve changeset info
 		chdir($this->repoPath);
@@ -274,7 +271,7 @@ class Babelwatch
 		foreach($logLines as $line)
 		{
 			$matches = array();
-			if (preg_match("/(.+):\s+(.+)/", $line, $matches))
+			if (preg_match("/([^:]*):\s+(.+)/", $line, $matches))
 			{
 				$revInfo[$matches[1]] = $matches[2];
 			}
@@ -285,9 +282,33 @@ class Babelwatch
 
 		$repoId = $this->updateRepo();
 		$changesetId = $this->updateChangeset($revInfo['changeset'], $revInfo['user'], $repoId, $revInfo['summary'], $tag);
-		$this->updateStringState($changesetId, $newStrings, 'a');
-		$this->updateStringState($changesetId, $removedStrings, 'r');
+		$this->updateStringState($changesetId, $diffStrings['added'], 'a');
+		$this->updateStringState($changesetId, $diffStrings['removed'], 'r');
 		echo "===\n";
+	}
+
+	/**
+	 * Compare two POT files and return the diff array
+	 *
+	 * @param string $oldPot Path to the old POT file
+	 * @param string $newPot Path to the new POT file
+	 * @return array The diff array
+	 */
+	private function comparePots($oldPot, $newPot)
+	{
+		require_once($this->poToolkitPath . 'POUtils.php');
+
+		// Compare the new and old pot files
+		$utils = new POUtils();
+		$diff = $utils->compare($oldPot, $newPot);
+
+		// Retrieve added/removed strings
+		$addedStrings = $diff['secondOnly'];
+		$removedStrings = $diff['firstOnly'];
+
+		echo "new: " . count($addedStrings) . ", removed: " . count($removedStrings) ."\n";
+
+		return array('added' => $addedStrings, 'removed' => $removedStrings);
 	}
 
 	/**
