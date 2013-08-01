@@ -30,7 +30,8 @@ if (array_key_exists($repoName, $GLOBALS['conf']['repo']))
 			$GLOBALS['conf']['mysql'],
 			$resUpdater);
 
-		$tracker->run($repoInfo['sourceFolder'], $repoInfo['extensions'], $repoInfo['operations']);
+		$revisions = array_key_exists('revisions', $repoInfo['options']) ? $repoInfo['options']['revisions'] : array();
+		$tracker->run($repoInfo['sourceFolder'], $repoInfo['extensions'], $repoInfo['operations'], $revisions);
 	}
 }
 ?>

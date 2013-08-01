@@ -154,7 +154,7 @@ class Babelwatch
 	 * @param int $operations Flags specifying which operations
 	 * to execute
 	 */
-	public function run($rootDir, $extentions, $operations = 7)
+	public function run($rootDir, $extentions, $operations = 7, $revisions = array())
 	{
 		chdir($this->repoPath);
 		$opArray = array(UPDATE_POT, UPDATE_TMS, UPDATE_TRACKING);
@@ -164,9 +164,8 @@ class Babelwatch
 		echo "\nWORKING ON " . strtoupper($this->repoName) . "\n";
 
 		// Retrieve incoming revisions
-		$revisions = explode("\n", shell_exec('hg log -r .:tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
-		// Retrieve current revision
-		$currentRev = trim($revisions[0]);
+		if (empty($revisions))
+			$revisions = explode("\n", shell_exec('hg log -r .:tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
 
 		// Iterate over all the incoming revisions
 		foreach ($revisions as $rev)
