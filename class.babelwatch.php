@@ -283,9 +283,6 @@ class Babelwatch
 
 		$tag = array_key_exists('tag', $revInfo) ? $revInfo['tag'] : '';
 
-		print "tag = $tag\n";
-		print_r($revInfo);
-
 		$repoId = $this->updateRepo();
 		$changesetId = $this->updateChangeset($revInfo['changeset'], $revInfo['user'], $repoId, $revInfo['summary'], $tag);
 		$this->updateStringState($changesetId, $newStrings, 'a');
