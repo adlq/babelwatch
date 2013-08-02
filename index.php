@@ -21,10 +21,13 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 		$tracker = new Babelwatch(
 			$repoName,
 			$repoInfo['repoPath'],
+			$repoInfo['sourceFolder'],
+			$repoInfo['extensions'],
 			$GLOBALS['conf']['assetPath'],
 			$GLOBALS['conf']['tmsToolkitPath'],
 			$GLOBALS['conf']['pophpPath'],
-			$GLOBALS['conf']['mysql']);
+			$GLOBALS['conf']['mysql'],
+			$repoInfo['operations']);
 
 		$log = $tracker->log();
 

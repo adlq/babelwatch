@@ -5,6 +5,9 @@ class Babelwatch
 
 	private $repoName;
 	private $repoPath;
+	private $rootDir;
+	private $extensions;
+
 	private $assetPath;
 	private $tmsToolkitPath;
 	private $poToolkitPath;
@@ -12,12 +15,21 @@ class Babelwatch
 	private $dbConf;
 	private $dbHandle;
 
+	private $resourceExtractor;
+	private $dbInitScript = "babelwatch.sql";
+
+	private $operations;
+	private $revisions;
+
 	/**
 	 * Constructor
 	 * Note: the path should end with a slash
 	 *
 	 * @param string $hgDir Parent directory of the repo
 	 * @param string $repoName Name of the repo folder
+	 * @param string $repoPath Full path to the repo
+	 * @param string $rootDir Relative path to directory containing the files we need to watch over
+	 * @param array $extensions Array of extensions to consider when building Gettext files
 	 * @param string $assetDir Directory containing all the assets (generated
 	 * POT files, PO files, temp files)
 	 * @param string $tmsToolkitPath Directory containing TMS toolkit (zanata-php-toolkit)
@@ -27,25 +39,36 @@ class Babelwatch
 	public function __construct(
 				$repoName,
 				$repoPath,
+				$rootDir,
+				$extensions,
 				$assetPath,
 				$tmsToolkitPath,
 				$poToolkitPath,
 				$dbConf,
-				$resourceExtractor = null)
+				$resourceExtractor = null,
+				$operations = 7,
+				$revisions = array())
 	{
 		$this->checkConfig();
 
 		$this->repoName = $repoName;
 		$this->repoPath = $repoPath;
+		$this->rootDir = $rootDir;
+		$this->extensions = $extensions;
+
 		$this->assetPath = $assetPath;
 		$this->tmsToolkitPath = $tmsToolkitPath;
 		$this->poToolkitPath = $poToolkitPath;
+
 		$this->dbConf = $dbConf;
+
 		$this->resourceExtractor = $resourceExtractor;
 
-		$this->dbInitScript = "babelwatch.sql";
-		$this->prepareDatabase();
+		$this->operations = $operations;
+		$this->revisions = $revisions;
 
+		$this->prepareDatabase();
+		date_default_timezone_set('Europe/Paris');
 	}
 
 	/**
@@ -147,14 +170,10 @@ class Babelwatch
 	/**
 	 * Watch over Babel
 	 *
-	 * @param string $rootDir The name of the directory
-	 * containing all the files that we have to parse
-	 * @param array $extensions Array containg all the
-	 * extensions to take into account
 	 * @param int $operations Flags specifying which operations
 	 * to execute
 	 */
-	public function run($rootDir, $extentions, $operations = 7, $revisions = array())
+	public function run()
 	{
 		chdir($this->repoPath);
 		$opArray = array(UPDATE_POT, UPDATE_TMS, UPDATE_TRACKING);
@@ -166,7 +185,7 @@ class Babelwatch
 		// Retrieve incoming revisions
 		// We have to make sure the current revision is on the main branch
 		// and then we can use -f in hg log to stay on the main branch
-		if (empty($revisions))
+		if (empty($this->revisions))
 			$revisions = explode("\n", shell_exec('hg log -f -r .:tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
 
 		// Iterate over all the incoming revisions
@@ -178,10 +197,10 @@ class Babelwatch
 				echo "Updating to revision $rev...\n";
 				exec("hg update --clean --rev $rev");
 
-				if (($operations & UPDATE_POT) === UPDATE_POT)
-					$potFiles = $this->resourceExtractor->buildGettextFiles($rootDir, $extentions);
+				if (($this->operations & UPDATE_POT) === UPDATE_POT)
+					$potFiles = $this->resourceExtractor->buildGettextFiles($this->rootDir, $this->extensions);
 
-				if (($operations & UPDATE_TMS) === UPDATE_TMS)
+				if (($this->operations & UPDATE_TMS) === UPDATE_TMS)
 				{
 					// Only update the TMS if there were new or removed strings
 					$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
@@ -189,7 +208,7 @@ class Babelwatch
 						$this->updateTMS($potFiles['new']);
 				}
 
-				if (($operations & UPDATE_TRACKING) === UPDATE_TRACKING)
+				if (($this->operations & UPDATE_TRACKING) === UPDATE_TRACKING)
 					$this->updateTracking($potFiles['old'], $potFiles['new']);
 			}
 		}
@@ -200,9 +219,12 @@ class Babelwatch
 	/**
 	 * Trace
 	 */
-	public function trace($rev1, $rev2)
+	public function sweep($rev1, $rev2)
 	{
+		// Clean init @ $rev1
+		$this->initAtRevision($rev1);
 		$revisions = range($rev1, $rev2);
+		array_shift($revisions);
 
 		foreach ($revisions as $rev)
 		{
@@ -210,9 +232,28 @@ class Babelwatch
 			chdir($this->repoPath);
 			exec("hg update --clean --rev $rev");
 
-			$this->updatePot();
-			$this->updateTracking();
+			$potFiles = $this->resourceExtractor->buildGettextFiles($this->rootDir, $this->extensions);
+			$this->updateTracking($potFiles['old'], $potFiles['new']);
 		}
+		return;
+	}
+
+	private function findRevision($rev)
+	{
+
+	}
+
+	/**
+	 * Initializes the tracker at a specific revision
+	 * @param string $rev The revision
+	 */
+	public function initAtRevision($rev)
+	{
+		echo "\nINITIALIZING " . strtoupper($this->repoName) . " AT REVISION $rev\n";
+		chdir($this->repoPath);
+		exec("hg update --clean --rev $rev");
+
+		$this->resourceExtractor->buildGettextFiles($this->rootDir, $this->extensions);
 	}
 
 	/**
@@ -281,7 +322,7 @@ class Babelwatch
 		$tag = array_key_exists('tag', $revInfo) ? $revInfo['tag'] : '';
 
 		$repoId = $this->updateRepo();
-		$changesetId = $this->updateChangeset($revInfo['changeset'], $revInfo['user'], $repoId, $revInfo['summary'], $tag);
+		$changesetId = $this->updateChangeset($revInfo['changeset'], $revInfo['user'], $repoId, $revInfo['summary'], date('Y-m-d H:i:s', strtotime($revInfo['date'])), $tag);
 		$this->updateStringState($changesetId, $diffStrings['added'], 'a');
 		$this->updateStringState($changesetId, $diffStrings['removed'], 'r');
 		echo "===\n";
@@ -351,10 +392,11 @@ class Babelwatch
 	 * @param string $user The name of the contributor
 	 * @param int $repoId The id of the repo to which the changeset belong
 	 * @param string $summary The summary of the changeset
+	 * @param string $date Timestamp of the changeset
 	 * @param string $tag The tag, if it exists
 	 * @return type
 	 */
-	private function updateChangeset($changeset, $user, $repoId, $summary, $tag = '')
+	private function updateChangeset($changeset, $user, $repoId, $summary, $date, $tag = '')
 	{
 		echo "\tUpdate changeset...";
 
@@ -379,8 +421,8 @@ class Babelwatch
 
 		// Create the changeset and bind it to the repo
 		$sqlNewChangeset =
-				"INSERT INTO bw_changeset (hg_id, repo_id, user_id, summary, tag)
-					VALUES (UNHEX(:changeset), :repoId, :userId, :summary, :tag)
+				"INSERT INTO bw_changeset (hg_id, repo_id, user_id, summary, tag, date)
+					VALUES (UNHEX(:changeset), :repoId, :userId, :summary, :tag, :date)
 					ON DUPLICATE KEY UPDATE hg_id = hg_id";
 		$queryNewChangeset = $this->dbHandle->prepare($sqlNewChangeset);
 		$queryNewChangeset->bindParam(':changeset', $changeset, PDO::PARAM_INT);
@@ -388,6 +430,7 @@ class Babelwatch
 		$queryNewChangeset->bindParam(':userId', $userRow['id'], PDO::PARAM_INT);
 		$queryNewChangeset->bindParam(':summary', $summary, PDO::PARAM_STR);
 		$queryNewChangeset->bindParam(':tag', $tag, PDO::PARAM_STR);
+		$queryNewChangeset->bindParam(':date', $date, PDO::PARAM_INT);
 		$queryNewChangeset->execute();
 
 		// Check changeset
@@ -537,7 +580,7 @@ class Babelwatch
 					JOIN bw_repo AS repo ON chg.repo_id = repo.id
 					JOIN bw_user AS user ON chg.user_id = user.id
 					WHERE repo.name LIKE :repoName
-					ORDER BY chg.id DESC';
+					ORDER BY chg.date DESC';
 		$query = $this->dbHandle->prepare($sql);
 		$query->bindParam(':repoName', $this->repoName);
 		$query->execute();

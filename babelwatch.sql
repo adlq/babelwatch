@@ -3,7 +3,7 @@
 -- Server version:               5.5.24 - MySQL Community Server (GPL)
 -- Server OS:                    Win32
 -- HeidiSQL version:             6.0.0.3991
--- Date/time:                    2013-08-01 10:45:21
+-- Date/time:                    2013-08-02 12:49:12
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS `bw_changeset` (
   `user_id` int(10) DEFAULT NULL,
   `summary` varchar(500) COLLATE utf8_bin DEFAULT NULL,
   `tag` varchar(50) COLLATE utf8_bin DEFAULT NULL,
+  `date` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `hg_id_repo_id` (`hg_id`,`repo_id`),
   KEY `FK_bw_changeset_bw_repo` (`repo_id`),
