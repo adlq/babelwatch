@@ -36,16 +36,18 @@ FOOTER;
 
 		foreach ($data as $repoName => $repoData)
 		{
+			$formattedRepoName = str_replace('.', '', $repoName);
+
 			$checked = array_key_exists('focused', $repoData) ? 'checked' : '';
-			$tabs .= "<input type=radio id=$repoName name=tab $checked><label for=$repoName>$repoName</label>";
+			$tabs .= "<input type=radio id=$formattedRepoName name=tab $checked><label for=$formattedRepoName>$repoName</label>";
 
 			$style .= <<<STYLE
 			<style>
-			#$repoName:checked ~ .$repoName
+			#$formattedRepoName:checked ~ .$formattedRepoName
 			{
 				display: block;
 			}
-			.$repoName
+			.$formattedRepoName
 			{
 				padding: 10px;
 				display: none;
@@ -55,7 +57,7 @@ FOOTER;
 STYLE;
 
 			$body .= <<<REPO
-				<div class=$repoName>
+				<div class=$formattedRepoName>
 				<h1>$repoName</h1><br>
 REPO;
 
