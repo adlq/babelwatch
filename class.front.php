@@ -52,6 +52,7 @@ FOOTER;
 				padding: 10px;
 				display: none;
 				border: 1px solid;
+				background: rgba(255, 255, 255, 0.5);
 			}
 			</style>
 STYLE;

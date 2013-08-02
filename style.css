@@ -1,8 +1,14 @@
+body {
+    background:#fed;
+    font-family: verdana;
+}
+
 .changeset, .addedRow, .removedRow
 {
 	border: 1px solid black;
 	width: 100%;
 	table-layout: fixed;
+	background: #FFF;
 }
 
 .addedRow
@@ -49,4 +55,7 @@ input:checked + label
 	top: 0;
 	border: 1px solid;
 	border-bottom: 5px solid;
+	background:#555;
+  border-color: #000;
+  color: #FFF;
 }
