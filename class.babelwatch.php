@@ -194,7 +194,7 @@ class Babelwatch
 			if ($rev !== '')
 			{
 				// Update and then execute operations
-				echo "Updating to revision $rev...\n";
+				echo "UPDATING TO REVISION $rev...\n";
 				exec("hg update --clean --rev $rev");
 
 				if (($this->operations & UPDATE_POT) === UPDATE_POT)
@@ -221,12 +221,15 @@ class Babelwatch
 	 */
 	public function sweep($rev1, $rev2)
 	{
+		chdir($this->repoPath);
 		// Clean init @ $rev1
+		$localRevisions = explode("\n", shell_exec('hg log -f -r ' . $rev1 . ':' . $rev2 . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
 		$this->initAtRevision($rev1);
-		$revisions = range($rev1, $rev2);
-		array_shift($revisions);
 
-		foreach ($revisions as $rev)
+		array_shift($localRevisions);
+		array_pop($localRevisions);
+
+		foreach ($localRevisions as $rev)
 		{
 			// Update the code
 			chdir($this->repoPath);
@@ -236,11 +239,6 @@ class Babelwatch
 			$this->updateTracking($potFiles['old'], $potFiles['new']);
 		}
 		return;
-	}
-
-	private function findRevision($rev)
-	{
-
 	}
 
 	/**
@@ -501,8 +499,6 @@ class Babelwatch
 		if ($action !== 'a' && $action !== 'r')
 			throw new Exception("Unexpected action '$action'");
 
-//		echo "Updating action for string $stringId @ changeset $changesetId, $action\n";
-
 		// Update added_changeset field in table to $changeset
 		$sqlStringUpdate =
 				"INSERT INTO bw_changeset_string (changeset_id, string_id, action)
@@ -607,25 +603,30 @@ class Babelwatch
 		return $logs;
 	}
 
-	public function getLatestStrings()
+	public function findStringAtRev($rev)
 	{
-		require_once($this->poToolkitPath . 'POFile.php');
+		$sql =
+		'SELECT str.content, chgstr.action FROM bw_changeset_string AS chgstr
+		JOIN
+			(SELECT chg.id AS last_chg_id,
+					foo.string_id
+					FROM bw_changeset AS chg
+			JOIN
+				(SELECT
+						str.id AS string_id,
+						MAX(chg.date) AS last_chg_time
+						FROM bw_changeset_string AS chgstr
+				JOIN bw_changeset AS chg
+					ON chg.id = chgstr.changeset_id
+				JOIN bw_string as str
+					ON chgstr.string_id = str.id
+				GROUP BY chgstr.string_id) AS foo
+				ON chg.date = foo.last_chg_time) AS bar
+			ON chgstr.changeset_id = bar.last_chg_id
+			AND chgstr.string_id = bar.string_id
+		JOIN bw_string as str
+			ON bar.string_id = str.id';
 
-		$sql = "select distinct last_action.content
-		from (select distinct str.content, chgstr.action
-					from bw_changeset_string as chgstr
-					inner join bw_string as str
-					on chgstr.string_id = str.id
-					order by chgstr.changeset_id desc)
-		as last_action where last_action.action LIKE 'a'";
 
-		$query = $this->dbHandle->prepare($sql);
-		$query->execute();
-
-		while($row = $query->fetch(PDO::FETCH_NUM))
-		{
-			$entry = new POEntry($row[0], '');
-			echo $entry;
-		}
 	}
 }

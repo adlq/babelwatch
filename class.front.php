@@ -28,11 +28,58 @@ HEADER;
 FOOTER;
 	}
 
+	public function displayRepo($data)
+	{
+		$tabs = '';
+		$body = '';
+		$style = '';
+
+		foreach ($data as $repoName => $repoData)
+		{
+			$checked = array_key_exists('focused', $repoData) ? 'checked' : '';
+			$tabs .= "<input type=radio id=$repoName name=tab $checked><label for=$repoName>$repoName</label>";
+
+			$style .= <<<STYLE
+			<style>
+			#$repoName:checked ~ .$repoName
+			{
+				display: block;
+			}
+			.$repoName
+			{
+				padding: 10px;
+				display: none;
+				border: 1px solid;
+			}
+			</style>
+STYLE;
+
+			$body .= <<<REPO
+				<div class=$repoName>
+				<h1>$repoName</h1><br>
+REPO;
+
+			foreach ($repoData['changesets'] as $changeset => $changesetData)
+			{
+				$body .= "<b>{$changesetData['summary']}</b> [$changeset] (<i>{$changesetData['user']}</i>)<br><br>";
+				$body .= $this->displayStringTable($changesetData['stringTable']);
+			}
+
+			$body .= '</div>';
+		}
+
+		echo $tabs;
+		echo $style;
+		echo $body;
+	}
+
 	public function displayStringTable($stringTable)
 	{
+		$out = '';
+
 		$addedStringsNum = count($stringTable['a']);
 		$removedStringsNum = count($stringTable['r']);
-		echo <<<TABLE
+		$out .= <<<TABLE
 				<br><table class='changeset'>
 					<th>+ ($addedStringsNum)</th>
 					<th>- ($removedStringsNum)</th>
@@ -50,13 +97,15 @@ TABLE;
 			$addedRowContent = isset($row['added']) ? "<a href={$row['added']['url']}>\"{$row['added']['string']}\"</a>" : '';
 			$removedRowContent = isset($row['removed']) ? "\"{$row['removed']['string']}\"" : '';
 
-			echo <<<ROW
+			$out .= <<<ROW
 			<tr>
 			<td class='addedRow'>$addedRowContent</td>
 			<td class='removedRow'>$removedRowContent</td>
 			</tr>
 ROW;
 		}
-		echo "</table><br>";
+		$out .= "</table><br>";
+
+		return $out;
 	}
 }

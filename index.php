@@ -14,10 +14,14 @@ function textFlowUrl($project, $iteration, $doc, $textflowId)
 	return "http://svrtest10:8080/zanata/webtrans/translate?project=$project&iteration=$iteration&localeId=fr-FR&locale=fr#view:doc;doc:$doc;textflow:$textflowId";
 }
 
+// Data to be sent to the front
+$data = array();
+
 foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 {
-	if ($repoInfo['active'])
+	if ($repoInfo['active'] === true)
 	{
+		// Initialize tracker
 		$tracker = new Babelwatch(
 			$repoName,
 			$repoInfo['repoPath'],
@@ -29,29 +33,30 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 			$GLOBALS['conf']['mysql'],
 			$repoInfo['operations']);
 
+		// Retrieve log
 		$log = $tracker->log();
 
 		if (!empty($log))
 		{
-			echo <<<REPO
-			<h1>$repoName</h1><br>
-			<ul>
-REPO;
+			// Default tab or not
+			$data[$repoName] = array('changesets' => array());
+			if (array_key_exists('focused', $repoInfo) && $repoInfo['focused'])
+				$data[$repoName]['focused'] = true;
+
+			// Iterate over all the changesets
 			foreach($log as $changeset => $changesetInfo)
 			{
+				// Prepare data of the changeset
+				$data[$repoName]['changesets'][$changeset] = array('stringTable' => array('a' => array(), 'r' => array()));
+				$data[$repoName]['changesets'][$changeset]['user'] = htmlentities($changesetInfo['user']);
+				$data[$repoName]['changesets'][$changeset]['summary'] = htmlentities($changesetInfo['summary']);
 
-				$stringTable = array('a' => array(), 'r' => array());
-
+				// Process added strings
 				if (array_key_exists('a', $changesetInfo))
 				{
-					chdir ($repoInfo['repoPath']);
-
-					$user = htmlentities($changesetInfo['user']);
-					$summary = htmlentities($changesetInfo['summary']);
-
-					echo "<li><b>$summary</b> [$changeset] (<i>$user</i>)<br><br>";
 					foreach ($changesetInfo['a'] as $string)
 					{
+						// Generate Zanata URL for each added string
 						$sql = 'SELECT tf.potEntryData_id, tf.content0
 									FROM HTextFlow as tf
 									INNER JOIN HDocument AS doc
@@ -79,7 +84,8 @@ REPO;
 
 						$url = textFlowUrl($repoInfo['projectSlug'], $repoInfo['iterationSlug'], $repoInfo['sourceDocName'], $resId);
 
-						array_push($stringTable['a'], array('string' => htmlentities($string), 'url' => $url));
+						// Update $data
+						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['a'], array('string' => htmlentities($string), 'url' => $url));
 					}
 				}
 
@@ -87,15 +93,14 @@ REPO;
 				{
 					foreach ($changesetInfo['r'] as $string)
 					{
-						array_push($stringTable['r'], array('string' => htmlentities($string)));
+						// Update $data
+						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['r'], array('string' => htmlentities($string)));
 					}
 				}
-
-				$front->displayStringTable($stringTable);
 			}
-			echo "</ul>";
 		}
 	}
 }
-
+// Front end stuff
+$front->displayRepo($data);
 $front->echoFooter();

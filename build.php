@@ -37,7 +37,6 @@ if (array_key_exists($repoName, $GLOBALS['conf']['repo']))
 			$repoInfo['operations'],
 			$revisions);
 
-		var_dump($buildType);
 		switch($buildType)
 		{
 			case 'build':
