@@ -186,7 +186,22 @@ class Babelwatch
 		// We have to make sure the current revision is on the main branch
 		// and then we can use -f in hg log to stay on the main branch
 		if (empty($this->revisions))
-			$revisions = explode("\n", shell_exec('hg log -f -r .:tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
+		{
+			$currentRevision = shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
+			$tip = shell_exec('hg log -r tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
+			$lastRevision = $tip;
+
+			$n = 1;
+			$revisions = array();
+			while ($lastRevision >= $currentRevision)
+			{
+				array_push($revisions, $lastRevision);
+				$lastRevision = shell_exec('hg log -r tip~' . $n . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
+				$n++;
+			}
+
+			$revisions = array_reverse($revisions);
+		}
 
 		// Iterate over all the incoming revisions
 		foreach ($revisions as $rev)
@@ -200,16 +215,15 @@ class Babelwatch
 				if (($this->operations & UPDATE_POT) === UPDATE_POT)
 					$potFiles = $this->resourceExtractor->buildGettextFiles($this->rootDir, $this->extensions);
 
-				if (($this->operations & UPDATE_TMS) === UPDATE_TMS)
-				{
-					// Only update the TMS if there were new or removed strings
-					$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
-					if (!empty($diffStrings['added']) || !empty($diffStrings['removed']))
-						$this->updateTMS($potFiles['new']);
-				}
+				// Only update the TMS and the tracking if there were new or removed strings
+				$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
+				$proceed = !empty($diffStrings['added']) || !empty($diffStrings['removed']);
 
-				if (($this->operations & UPDATE_TRACKING) === UPDATE_TRACKING)
-					$this->updateTracking($potFiles['old'], $potFiles['new']);
+				if (($this->operations & UPDATE_TMS) === UPDATE_TMS && $proceed)
+						$this->updateTMS($potFiles['new']);
+
+				if (($this->operations & UPDATE_TRACKING) === UPDATE_TRACKING && $proceed)
+					$this->updateTracking($diffStrings);
 			}
 		}
 		echo "\nWORK ON " . strtoupper($this->repoName) . " DONE\n";
@@ -292,12 +306,11 @@ class Babelwatch
 	 *	- Create a row in bw_repo for the repo if it doesn't exist
 	 *	- Create a row in bw_changeset for the changeset if it doesn't exist
 	 *  - Update information about strings (content, references, added/removed)
+	 *  @param array $diffStrings The diff array of strings
 	 */
-	public function updateTracking($oldPot, $newPot)
+	public function updateTracking($diffStrings)
 	{
 		echo "===\nUpdating tracking for {$this->repoName}...\n";
-
-		$diffStrings = $this->comparePots($oldPot, $newPot);
 
 		// Retrieve changeset info
 		chdir($this->repoPath);
