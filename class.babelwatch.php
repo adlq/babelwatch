@@ -231,7 +231,7 @@ class Babelwatch
 	}
 
 	/**
-	 * Trace
+	 * Sweep
 	 */
 	public function sweep($rev1, $rev2)
 	{
@@ -250,7 +250,16 @@ class Babelwatch
 			exec("hg update --clean --rev $rev");
 
 			$potFiles = $this->resourceExtractor->buildGettextFiles($this->rootDir, $this->extensions);
-			$this->updateTracking($potFiles['old'], $potFiles['new']);
+
+			// Only update the TMS and the tracking if there were new or removed strings
+			$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
+			$proceed = !empty($diffStrings['added']) || !empty($diffStrings['removed']);
+
+			if ($proceed)
+			{
+				$this->updateTMS($potFiles['new']);
+				$this->updateTracking($diffStrings);
+			}
 		}
 		return;
 	}
@@ -618,6 +627,7 @@ class Babelwatch
 
 	public function findStringAtRev($rev)
 	{
+
 		$sql =
 		'SELECT str.content, chgstr.action FROM bw_changeset_string AS chgstr
 		JOIN
@@ -633,13 +643,20 @@ class Babelwatch
 					ON chg.id = chgstr.changeset_id
 				JOIN bw_string as str
 					ON chgstr.string_id = str.id
+				WHERE chg.id = :rev
 				GROUP BY chgstr.string_id) AS foo
 				ON chg.date = foo.last_chg_time) AS bar
 			ON chgstr.changeset_id = bar.last_chg_id
 			AND chgstr.string_id = bar.string_id
 		JOIN bw_string as str
 			ON bar.string_id = str.id';
+	}
 
-
+	private function findRevId($rev)
+	{
+		$sql = 'SELECT chg.id FROM bw_changeset AS chg WHERE chg.hg_id = :rev';
+		$query = $this->dbHandle->prepare($sql);
+		$query->bindParam(':repoName', $this->repoName);
+		$query->execute();
 	}
 }
