@@ -1,7 +1,6 @@
 <?php
 require_once('conf.php');
 require_once('class.babelwatch.php');
-require_once('class.subProjectResourceExtractor.php');
 require_once('class.projectResourceExtractor.php');
 
 if (!isset($argv[1]) || !isset($argv[2]))
@@ -15,27 +14,27 @@ if (array_key_exists($repoName, $GLOBALS['conf']['repo']))
 	$repoInfo = $GLOBALS['conf']['repo'][$repoName];
 	if ($repoInfo['active'])
 	{
+		$blacklist = (array_key_exists('blacklist', $repoInfo)) ? $repoInfo['blacklist'] : array();
+
 		$resUpdater = new $repoInfo['resourceExtractorClass'](
-			$repoName,
-			$repoInfo['repoPath'],
-			$GLOBALS['conf']['assetPath'],
-			$GLOBALS['conf']['pophpPath'],
-			$repoInfo['options']);
-
-		$revisions = array_key_exists('revisions', $repoInfo['options']) ? $repoInfo['options']['revisions'] : array();
-
-		$tracker = new Babelwatch(
 			$repoName,
 			$repoInfo['repoPath'],
 			$repoInfo['sourceFolder'],
 			$repoInfo['extensions'],
 			$GLOBALS['conf']['assetPath'],
+			$GLOBALS['conf']['pophpPath'],
+			$blacklist,
+			$repoInfo['options']);
+
+		$tracker = new Babelwatch(
+			$repoName,
+			$repoInfo['repoPath'],
+			$GLOBALS['conf']['assetPath'],
 			$GLOBALS['conf']['tmsToolkitPath'],
 			$GLOBALS['conf']['pophpPath'],
 			$GLOBALS['conf']['mysql'],
 			$resUpdater,
-			$repoInfo['operations'],
-			$revisions);
+			$repoInfo['operations']);
 
 		switch($buildType)
 		{
@@ -57,4 +56,4 @@ if (array_key_exists($repoName, $GLOBALS['conf']['repo']))
 		}
 	}
 }
-?>
+

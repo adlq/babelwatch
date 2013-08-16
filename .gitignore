@@ -218,3 +218,6 @@ pip-log.txt
 po/
 pot/
 conf.php
+
+# PhpStorm
+.idea/

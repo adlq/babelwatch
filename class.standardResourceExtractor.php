@@ -3,9 +3,14 @@ class StandardResourceExtractor
 {
 	private $repoName;
 	private $repoPath;
+	private $rootDir;
+	private $extensions;
+	private $blacklist;
 	private $assetPath;
 	private $pophpPath;
-	private $rootDir;
+
+	private $poUtils;
+	private $options;
 
 	private $fileLists;
 	private $potPath;
@@ -15,17 +20,38 @@ class StandardResourceExtractor
 	private $frPoPath;
 	private $refPo;
 	private $frPoFile;
-	private $tempFrPoFile;
 
-	public static $poUtils;
-	public static $options;
-
-	public function __construct($repoName, $repoPath, $assetPath, $pophpPath, $options = array())
+	/**
+	 * Constructor
+	 *
+	 * @param string    	$repoName Name of the repo
+	 * @param string      $repoPath Path to the repo
+	 * @param string      $rootDir Relative path to directory containing the files we need to watch over
+	 * @param array				$extensions Array of extensions to consider when building Gettext files
+	 * @param string      $assetPath Path to folder
+	 * containing the assets
+	 * @param string      $pophpPath Path to pophp library
+	 * @param array				$blacklist Blacklisted folders
+	 * @param array 			$options Misc options
+	 */
+	public function __construct(
+		$repoName,
+		$repoPath,
+		$rootDir,
+		$extensions,
+		$assetPath,
+		$pophpPath,
+		$blacklist = array(),
+		$options = array())
 	{
 		$this->repoName = $repoName;
 		$this->repoPath = $repoPath;
+		$this->rootDir = $rootDir;
+		$this->extensions = $extensions;
+		$this->blacklist = $blacklist;
 		$this->assetPath = $assetPath;
 		$this->pophpPath = $pophpPath;
+
 		require_once($this->pophpPath . 'POUtils.php');
 		$this->poUtils = new POUtils();
 		$this->options = $options;
@@ -72,10 +98,10 @@ class StandardResourceExtractor
 			$this->poUtils->initGettextFile($this->frPoFile);
 	}
 
-	public function buildGettextFromAllStrings($rootDir, $extensions = array())
+	public function buildGettextFromAllStrings()
 	{
 		echo "===\nUpdating po files for {$this->repoName}...\n";
-		if (empty($extensions))
+		if (empty($this->extensions))
 			throw new Exception("No extension specified for string extraction");
 
 		$potLists = array();
@@ -95,11 +121,11 @@ class StandardResourceExtractor
 		$this->poUtils->initGettextFile($this->potFileName);
 
 		// List all the .php and .js files to extract messages from
-		foreach ($extensions as $ext)
+		foreach ($this->extensions as $ext)
 		{
 			// File containing the list of .php and .js files
 			$this->fileLists[$ext] = $this->assetPath . $ext . '_file_list_' . $this->repoName . '.txt';
-			$this->listFilesToProcess($rootDir, $ext, $this->fileLists[$ext]);
+			$this->listFilesToProcess($this->rootDir, $ext, $this->fileLists[$ext], $this->blacklist);
 
 			$potLists[$ext] = $this->potPath . $this->repoName . '_' . $ext . '.pot';
 			$this->poUtils->initGettextFile($potLists[$ext]);
@@ -122,7 +148,7 @@ class StandardResourceExtractor
 		$potPieces = implode(" ", $potLists);
 
 		// Uniquify
-		foreach ($extensions as $ext)
+		foreach ($this->extensions as $ext)
 			exec("msguniq --sort-output --add-location --no-wrap {$potLists[$ext]} -o {$potLists[$ext]} 1> nul 2>&1");
 
 		exec("msgcat --sort-output --add-location --no-wrap $potPieces -o {$this->potFileName} 1> nul 2>&1");
@@ -130,7 +156,7 @@ class StandardResourceExtractor
 		exec("msguniq --sort-output --add-location --no-wrap {$this->potFileName} -o {$this->potFileName} 1> nul 2>&1");
 
 		// Remove temporary files
-		foreach ($extensions as $ext)
+		foreach ($this->extensions as $ext)
 		{
 			unlink($potLists[$ext]);
 			unlink($this->fileLists[$ext]);
@@ -162,33 +188,45 @@ class StandardResourceExtractor
 			'new' => $this->potFileName);
 	}
 
-	/**
-	 * List all files with certain types in a given folder,
-	 * and write them, one per line, in a file.
-	 *
-	 * @param string $dir Path of the directory inside the repo
-	 * @param string $ext Extension to consider
-	 * @param string $output Path to the output file
-	 */
-	private function listFilesToProcess($dir, $ext, $output)
-	{
-		chdir($this->repoPath);
-		$files = shell_exec("hg locate --include $dir");
-		$files = explode("\n", $files);
+    /**
+     * List all files with certain types in a given folder,
+     * and write them, one per line, in a file.
+     *
+     * @param string $dir Path of the directory inside the repo
+     * @param string $ext Extension to consider
+     * @param string $output Path to the output file
+     * @param array $blacklist Folders to be ignored
+     */
+    private function listFilesToProcess($dir, $ext, $output, $blacklist = array())
+    {
+			chdir($this->repoPath);
+			$files = shell_exec("hg locate --include $dir");
+			$files = explode("\n", $files);
 
-		foreach($files as $id => $entry)
-		{
-			if (pathinfo($entry, PATHINFO_EXTENSION) !== $ext)
+			foreach($files as $id => $entry)
 			{
-				unset($files[$id]);
+				if (pathinfo($entry, PATHINFO_EXTENSION) !== $ext)
+				{
+						unset($files[$id]);
+				}
+				else if (!empty($blacklist)) 				// Only check blacklist folders if $blacklist is non-empty
+				{
+					foreach ($blacklist as $blFolder)
+					{
+						$dirs = pathinfo($entry, PATHINFO_DIRNAME);
+						// If at least one folder from the path coincides
+						// with one of the blacklisted folders, ignore the file
+						if (strpos($dirs, $blFolder) !== false)
+							unset($files[$id]);
+					}
+				}
 			}
-		}
 
-		$files = implode("\n", $files);
-		file_put_contents($output, $files);
-	}
+			$files = implode("\n", $files);
+			file_put_contents($output, $files);
+    }
 
-	/**
+    /**
 	 * Check whether a gettext file has non-empty entries
 	 *
 	 * @param string $file The file to check
@@ -202,7 +240,7 @@ class StandardResourceExtractor
 		return (file_get_contents($file) !== $this->poUtils->getGettextHeader());
 	}
 
-	/**
+    /**
 	 * Return full path to the old and new POT files
 	 */
 	public function getGettextFilesPath()

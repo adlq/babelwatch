@@ -25,36 +25,30 @@ class Babelwatch
 	 * Constructor
 	 * Note: the path should end with a slash
 	 *
-	 * @param string $hgDir Parent directory of the repo
 	 * @param string $repoName Name of the repo folder
 	 * @param string $repoPath Full path to the repo
-	 * @param string $rootDir Relative path to directory containing the files we need to watch over
-	 * @param array $extensions Array of extensions to consider when building Gettext files
-	 * @param string $assetDir Directory containing all the assets (generated
+	 * @param string $assetPath Directory containing all the assets (generated
 	 * POT files, PO files, temp files)
 	 * @param string $tmsToolkitPath Directory containing TMS toolkit (zanata-php-toolkit)
 	 * @param string $poToolkitPath Directory containing pophp
 	 * @param array $dbConf Array containing DB configuration
+     * @param ResourceExtractor $resourceExtractor A localizable resource extractor
+     * @param int $operations The operations to perform (see common.php)
 	 */
 	public function __construct(
 				$repoName,
 				$repoPath,
-				$rootDir,
-				$extensions,
 				$assetPath,
 				$tmsToolkitPath,
 				$poToolkitPath,
 				$dbConf,
 				$resourceExtractor = null,
-				$operations = 7,
-				$revisions = array())
+				$operations = 7)
 	{
 		$this->checkConfig();
 
 		$this->repoName = $repoName;
 		$this->repoPath = $repoPath;
-		$this->rootDir = $rootDir;
-		$this->extensions = $extensions;
 
 		$this->assetPath = $assetPath;
 		$this->tmsToolkitPath = $tmsToolkitPath;
@@ -65,7 +59,6 @@ class Babelwatch
 		$this->resourceExtractor = $resourceExtractor;
 
 		$this->operations = $operations;
-		$this->revisions = $revisions;
 
 		$this->prepareDatabase();
 		date_default_timezone_set('Europe/Paris');
@@ -105,7 +98,7 @@ class Babelwatch
 			|| !array_key_exists('iterationSlug', $repoInfo)
 			|| !array_key_exists('options', $repoInfo)
 			|| !array_key_exists('sourceDocName', $repoInfo))
-				throw new Exception("Missing parameter in configuration for repository $repo. Please refer to conf_sample.php");
+				throw new Exception("Missing parameter in configuration for repository $repoName. Please refer to conf_sample.php");
 
 			if (!file_exists($repoInfo['repoPath']))
 				throw new Exception('Specified repository path is invalid. No such directory');
@@ -168,10 +161,7 @@ class Babelwatch
 	}
 
 	/**
-	 * Watch over Babel
-	 *
-	 * @param int $operations Flags specifying which operations
-	 * to execute
+	 * Run
 	 */
 	public function run()
 	{
@@ -185,23 +175,20 @@ class Babelwatch
 		// Retrieve incoming revisions
 		// We have to make sure the current revision is on the main branch
 		// and then we can use -f in hg log to stay on the main branch
-		if (empty($this->revisions))
-		{
-			$currentRevision = shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
-			$tip = shell_exec('hg log -r tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
-			$lastRevision = $tip;
+        $currentRevision = shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
+        $tip = shell_exec('hg log -r tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
+        $lastRevision = $tip;
 
-			$n = 1;
-			$revisions = array();
-			while ($lastRevision >= $currentRevision)
-			{
-				array_push($revisions, $lastRevision);
-				$lastRevision = shell_exec('hg log -r tip~' . $n . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
-				$n++;
-			}
+        $n = 1;
+        $revisions = array();
+        while ($lastRevision >= $currentRevision)
+        {
+            array_push($revisions, $lastRevision);
+            $lastRevision = shell_exec('hg log -r tip~' . $n . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
+            $n++;
+        }
 
-			$revisions = array_reverse($revisions);
-		}
+        $revisions = array_reverse($revisions);
 
 		// Iterate over all the incoming revisions
 		foreach ($revisions as $rev)
@@ -213,7 +200,7 @@ class Babelwatch
 				exec("hg update --clean --rev $rev");
 
 				if (($this->operations & UPDATE_POT) === UPDATE_POT)
-					$potFiles = $this->resourceExtractor->buildGettextFiles($this->rootDir, $this->extensions);
+					$potFiles = $this->resourceExtractor->buildGettextFiles();
 
 				// Only update the TMS and the tracking if there were new or removed strings
 				$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
@@ -230,10 +217,15 @@ class Babelwatch
 		return;
 	}
 
-	/**
-	 * Sweep
-	 */
-	public function sweep($rev1, $rev2)
+    /**
+     * Run babelwatch over a range of revisions
+     * NOTE: The revision number is local and
+     * thus unique to each version of the repo
+     *
+     * @param int $rev1 Starting revision
+     * @param int $rev2 Ending revision
+     */
+    public function sweep($rev1, $rev2)
 	{
 		chdir($this->repoPath);
 		// Clean init @ $rev1
@@ -249,7 +241,7 @@ class Babelwatch
 			chdir($this->repoPath);
 			exec("hg update --clean --rev $rev");
 
-			$potFiles = $this->resourceExtractor->buildGettextFiles($this->rootDir, $this->extensions);
+			$potFiles = $this->resourceExtractor->buildGettextFiles();
 
 			// Only update the TMS and the tracking if there were new or removed strings
 			$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
@@ -266,6 +258,7 @@ class Babelwatch
 
 	/**
 	 * Initializes the tracker at a specific revision
+     *
 	 * @param string $rev The revision
 	 */
 	public function initAtRevision($rev)
@@ -274,11 +267,13 @@ class Babelwatch
 		chdir($this->repoPath);
 		exec("hg update --clean --rev $rev");
 
-		$this->resourceExtractor->buildGettextFiles($this->rootDir, $this->extensions);
+		$this->resourceExtractor->buildGettextFiles();
 	}
 
 	/**
 	 * Upload pot entries to the TMS
+     *
+     * @param string $newPot Path to the POT file
 	 */
 	public function updateTMS($newPot)
 	{
@@ -300,7 +295,7 @@ class Babelwatch
 		}
 		else
 		{
-			exit("Unknown project, no section $repoName in conf.php file");
+			exit("Unknown project, no section $this->repoName in conf.php file");
 		}
 
 		// Update the source entries on Zanata!
@@ -473,6 +468,7 @@ class Babelwatch
 	/**
 	 * Update information about the strings (reference, status)
 	 *
+     * @param string $changesetId The full id of the changeset
 	 * @param array<POEntry> $entries Array of POEntry objects
 	 * @param string $action 'added' or 'removed'
 	 */
