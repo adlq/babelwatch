@@ -199,17 +199,17 @@ class Babelwatch
 				echo "UPDATING TO REVISION $rev...\n";
 				exec("hg update --clean --rev $rev");
 
-				if (($this->operations & UPDATE_POT) === UPDATE_POT)
+				if ($this->hasToPerform(UPDATE_POT))
 					$potFiles = $this->resourceExtractor->buildGettextFiles();
 
 				// Only update the TMS and the tracking if there were new or removed strings
 				$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
 				$proceed = !empty($diffStrings['added']) || !empty($diffStrings['removed']);
 
-				if (($this->operations & UPDATE_TMS) === UPDATE_TMS && $proceed)
+				if ($this->hasToPerform(UPDATE_TMS) && $proceed)
 						$this->updateTMS($potFiles['new']);
 
-				if (($this->operations & UPDATE_TRACKING) === UPDATE_TRACKING && $proceed)
+				if ($this->hasToPerform(UPDATE_TRACKING) && $proceed)
 					$this->updateTracking($diffStrings);
 			}
 		}
@@ -249,7 +249,9 @@ class Babelwatch
 
 			if ($proceed)
 			{
-				$this->updateTMS($potFiles['new']);
+				if ($this->hasToPerform(UPDATE_TMS))
+					$this->updateTMS($potFiles['new']);
+				
 				$this->updateTracking($diffStrings);
 			}
 		}
@@ -654,5 +656,18 @@ class Babelwatch
 		$query = $this->dbHandle->prepare($sql);
 		$query->bindParam(':repoName', $this->repoName);
 		$query->execute();
+	}
+
+	/**
+	 * Returns true if the class has to perform
+	 * a specific operation
+	 *
+	 * @param int $operation The operation (see common.php)
+	 *
+	 * @return bool
+	 */
+	private function hasToPerform($operation)
+	{
+		return (($this->operations & $operation) === $operation);
 	}
 }
