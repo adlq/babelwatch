@@ -173,22 +173,7 @@ class Babelwatch
 		echo "\nWORKING ON " . strtoupper($this->repoName) . "\n";
 
 		// Retrieve incoming revisions
-		// We have to make sure the current revision is on the main branch
-		// and then we can use -f in hg log to stay on the main branch
-        $currentRevision = shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
-        $tip = shell_exec('hg log -r tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
-        $lastRevision = $tip;
-
-        $n = 1;
-        $revisions = array();
-        while ($lastRevision >= $currentRevision)
-        {
-            array_push($revisions, $lastRevision);
-            $lastRevision = shell_exec('hg log -r tip~' . $n . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
-            $n++;
-        }
-
-        $revisions = array_reverse($revisions);
+		$revisions = $this->getRightRevisions('.', 'tip');
 
 		// Iterate over all the incoming revisions
 		foreach ($revisions as $rev)
@@ -217,28 +202,29 @@ class Babelwatch
 		return;
 	}
 
-    /**
-     * Run babelwatch over a range of revisions
-     * NOTE: The revision number is local and
-     * thus unique to each version of the repo
-     *
-     * @param int $rev1 Starting revision
-     * @param int $rev2 Ending revision
-     */
-    public function sweep($rev1, $rev2)
+	/**
+	 * Run babelwatch over a range of revisions
+	 * NOTE: The revision number is local and
+	 * thus unique to each version of the repo
+	 *
+	 * @param int $rev1 Starting revision
+	 * @param int $rev2 Ending revision
+	 */
+	public function sweep($rev1, $rev2)
 	{
 		chdir($this->repoPath);
-		// Clean init @ $rev1
-		$localRevisions = explode("\n", shell_exec('hg log -f -r ' . $rev1 . ':' . $rev2 . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
-		$this->initAtRevision($rev1);
 
+		// Retrieve the right revisions
+		$localRevisions = $this->getRightRevisions($rev1, $rev2);
+		// Clean init @ oldest revision
+		$this->initAtRevision($localRevisions[0]);
 		array_shift($localRevisions);
-		array_pop($localRevisions);
 
 		foreach ($localRevisions as $rev)
 		{
 			// Update the code
 			chdir($this->repoPath);
+			echo "UPDATING TO REVISION $rev...\n";
 			exec("hg update --clean --rev $rev");
 
 			$potFiles = $this->resourceExtractor->buildGettextFiles();
@@ -251,7 +237,7 @@ class Babelwatch
 			{
 				if ($this->hasToPerform(UPDATE_TMS))
 					$this->updateTMS($potFiles['new']);
-				
+
 				$this->updateTracking($diffStrings);
 			}
 		}
@@ -259,8 +245,85 @@ class Babelwatch
 	}
 
 	/**
+	 * Given 2 revision local ids, compute the right subset
+	 * of revisions in between to watch over. The parameters
+	 * do not need to be ordered.
+	 *
+	 * @param string $rev1 The first revision
+	 * @param string $rev2 The second revision
+	 * @return array<int> An array of the revisions
+	 */
+	public function getRightRevisions($rev1, $rev2)
+	{
+		chdir($this->repoPath);
+
+		// Sort the two given revisions first
+		$sortedRevisions = $this->sortRevisionsByDate($rev1, $rev2);
+		$start = $sortedRevisions['oldest'];
+		$end = $sortedRevisions['newest'];
+
+		/**
+		 * Get the right subset of revisions
+		 */
+		$lastRevision = $end;
+
+		$n = 1;
+		$revisions = array();
+		while ($lastRevision != $start)
+		{
+			array_push($revisions, $lastRevision);
+			// The '~n' sign specifies that we want the nth first ancestor of the $end revision
+			$lastRevision = trim(shell_exec('hg log -r ' . $end . '~' . $n . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
+			$n++;
+		}
+
+		array_push($revisions, $lastRevision);
+		$revisions = array_reverse($revisions);
+
+		return $revisions;
+	}
+
+	/**
+	 * Given 2 local revision ids, compute the oldest
+	 * and the newest revisions.
+	 *
+	 * @param string $rev1 First revision
+	 * @param string $rev2 Second revision
+	 *
+	 * @return array An associative array with 'oldest' and 'newest" keys
+	 */
+	private function sortRevisionsByDate($rev1, $rev2)
+	{
+		chdir($this->repoPath);
+
+		/**
+		 * Sort the revisions by date
+		 */
+		// Retrieve the dates and automatically sort the revisions
+		$revInfo = shell_exec('hg log -r ' . $rev1 . ' -r ' . $rev2 . ' | grep -G "^date" | sed "s/^date:[[:space:]]*//g"');
+
+		// Retrieve the two dates
+		$lines = explode("\n", $revInfo);
+
+		// Remove the empty element
+		array_pop($lines);
+
+		// Create a new date array from the lines arra
+		$dates = array($rev1 => $lines[0], $rev2 => $lines[1]);
+
+		// After the sort, the oldest revision is the
+		// first element and the newest the second
+		asort($dates, SORT_NUMERIC);
+		$extrema = array_keys($dates);
+		$start = $extrema[0];
+		$end = $extrema[1];
+
+		return array('oldest' => $start, 'newest' => $end);
+	}
+
+	/**
 	 * Initializes the tracker at a specific revision
-     *
+	 *
 	 * @param string $rev The revision
 	 */
 	public function initAtRevision($rev)
@@ -274,8 +337,8 @@ class Babelwatch
 
 	/**
 	 * Upload pot entries to the TMS
-     *
-     * @param string $newPot Path to the POT file
+	 *
+	 * @param string $newPot Path to the POT file
 	 */
 	public function updateTMS($newPot)
 	{
@@ -625,7 +688,6 @@ class Babelwatch
 
 	public function findStringAtRev($rev)
 	{
-
 		$sql =
 		'SELECT str.content, chgstr.action FROM bw_changeset_string AS chgstr
 		JOIN
