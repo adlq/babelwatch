@@ -166,14 +166,15 @@ class Babelwatch
 	public function run()
 	{
 		chdir($this->repoPath);
-		$opArray = array(UPDATE_POT, UPDATE_TMS, UPDATE_TRACKING);
-
 		$potFiles = $this->resourceExtractor->getGettextFilesPath();
 
 		echo "\nWORKING ON " . strtoupper($this->repoName) . "\n";
 
 		// Retrieve incoming revisions
 		$revisions = $this->getRightRevisions('.', 'tip');
+
+		if (count($revisions) === 1)
+			exit("Nothing to do");
 
 		// Iterate over all the incoming revisions
 		foreach ($revisions as $rev)
@@ -223,7 +224,6 @@ class Babelwatch
 		foreach ($localRevisions as $rev)
 		{
 			// Update the code
-			chdir($this->repoPath);
 			echo "UPDATING TO REVISION $rev...\n";
 			exec("hg update --clean --rev $rev");
 
@@ -262,6 +262,9 @@ class Babelwatch
 		$start = $sortedRevisions['oldest'];
 		$end = $sortedRevisions['newest'];
 
+		if ($start == $end)
+			return array($start);
+
 		/**
 		 * Get the right subset of revisions
 		 */
@@ -296,6 +299,13 @@ class Babelwatch
 	{
 		chdir($this->repoPath);
 
+		$rev1 = $this->getLocalRevisionId($rev1);
+		$rev2 = $this->getLocalRevisionId($rev2);
+
+		// If the revisions are the same, return a dummy array
+		if ($rev1 == $rev2)
+			return array('oldest' => $rev1, 'newest' => $rev2);
+
 		/**
 		 * Sort the revisions by date
 		 */
@@ -305,20 +315,45 @@ class Babelwatch
 		// Retrieve the two dates
 		$lines = explode("\n", $revInfo);
 
+		print_r($lines);
+
 		// Remove the empty element
 		array_pop($lines);
 
-		// Create a new date array from the lines arra
-		$dates = array($rev1 => $lines[0], $rev2 => $lines[1]);
+		// Create a new date array from the lines array
+		$dates = array($rev1 => strtotime($lines[0]), $rev2 => strtotime($lines[1]));
 
 		// After the sort, the oldest revision is the
 		// first element and the newest the second
 		asort($dates, SORT_NUMERIC);
+		print_r($dates);
 		$extrema = array_keys($dates);
 		$start = $extrema[0];
 		$end = $extrema[1];
 
 		return array('oldest' => $start, 'newest' => $end);
+	}
+
+	/**
+	 * Return the local id for a given revision.
+	 * @param string $rev The revision. Can be '.' or 'tip'
+	 *
+	 * @return string
+	 */
+	private function getLocalRevisionId($rev)
+	{
+		switch($rev)
+		{
+			case '.':
+				// Retrieve the int value of the current code revision
+				return trim(shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
+			case 'tip':
+				// Retrieve the int value of the tip revision
+				return trim(shell_exec('hg log -r tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
+			default:
+				return $rev;
+		}
+
 	}
 
 	/**
