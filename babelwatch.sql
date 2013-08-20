@@ -18,7 +18,7 @@ USE `babelwatch`;
 -- Dumping structure for table babelwatch.bw_changeset
 CREATE TABLE IF NOT EXISTS `bw_changeset` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
-  `hg_id` binary(20) NOT NULL,
+  `hg_id` varchar(40) NOT NULL,
   `repo_id` int(10) DEFAULT NULL,
   `user_id` int(10) DEFAULT NULL,
   `summary` varchar(500) COLLATE utf8_bin DEFAULT NULL,

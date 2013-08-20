@@ -5,12 +5,12 @@ class Babelwatch
 
 	private $repoName;
 	private $repoPath;
-	private $rootDir;
-	private $extensions;
 
 	private $assetPath;
 	private $tmsToolkitPath;
 	private $poToolkitPath;
+
+	private $tmsToolkit;
 
 	private $dbConf;
 	private $dbHandle;
@@ -19,7 +19,6 @@ class Babelwatch
 	private $dbInitScript = "babelwatch.sql";
 
 	private $operations;
-	private $revisions;
 
 	/**
 	 * Constructor
@@ -141,7 +140,6 @@ class Babelwatch
 		$queryDbCheck->bindParam(':dbName', $this->dbConf['db'], PDO::PARAM_STR);
 		$queryDbCheck->execute();
 
-		$queryDbResult = $queryDbCheck->fetch(PDO::FETCH_ASSOC);
 		if ($queryDbCheck->rowCount() === 0)
 		{
 			$sqlSetup = file_get_contents($this->dbInitScript);
@@ -167,7 +165,6 @@ class Babelwatch
 	{
 		chdir($this->repoPath);
 		$potFiles = $this->resourceExtractor->getGettextFilesPath();
-
 		echo "\nWORKING ON " . strtoupper($this->repoName) . "\n";
 
 		// Retrieve incoming revisions
@@ -187,6 +184,8 @@ class Babelwatch
 
 				if ($this->hasToPerform(UPDATE_POT))
 					$potFiles = $this->resourceExtractor->buildGettextFiles();
+				else
+					$potFiles = $this->resourceExtractor->getGettextFilesPath();
 
 				// Only update the TMS and the tracking if there were new or removed strings
 				$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
@@ -227,11 +226,15 @@ class Babelwatch
 			echo "UPDATING TO REVISION $rev...\n";
 			exec("hg update --clean --rev $rev");
 
-			$potFiles = $this->resourceExtractor->buildGettextFiles();
+			if ($this->hasToPerform(UPDATE_POT))
+				$potFiles = $this->resourceExtractor->buildGettextFiles();
+			else
+				$potFiles = $this->resourceExtractor->getGettextFilesPath();
 
 			// Only update the TMS and the tracking if there were new or removed strings
 			$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
 			$proceed = !empty($diffStrings['added']) || !empty($diffStrings['removed']);
+
 
 			if ($proceed)
 			{
@@ -315,8 +318,6 @@ class Babelwatch
 		// Retrieve the two dates
 		$lines = explode("\n", $revInfo);
 
-		print_r($lines);
-
 		// Remove the empty element
 		array_pop($lines);
 
@@ -326,7 +327,6 @@ class Babelwatch
 		// After the sort, the oldest revision is the
 		// first element and the newest the second
 		asort($dates, SORT_NUMERIC);
-		print_r($dates);
 		$extrema = array_keys($dates);
 		$start = $extrema[0];
 		$end = $extrema[1];
@@ -378,16 +378,35 @@ class Babelwatch
 	public function updateTMS($newPot)
 	{
 		echo "===\nUpdating TMS for {$this->repoName}...\n";
+		require_once($this->tmsToolkitPath . 'ZanataPHPToolkit.php');
+
+		if (!isset($this->tmsToolkit))
+			$this->createTmsToolkit();
+
+		// Update the source entries on Zanata!
+		$this->tmsToolkit->pushPotEntries($newPot, $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName'], 'en-GB');
+		echo "===\n";
+	}
+
+
+	/**
+	 * Create the TMS toolkit if it has not been
+	 * created yet
+	 */
+	private function createTmsToolkit()
+	{
+		if (isset($this->tmsToolkit))
+			return;
+
 		require_once($this->tmsToolkitPath . 'conf.php');
 		require_once($this->tmsToolkitPath . 'ZanataPHPToolkit.php');
+		// Retrieve parameters from the TMS conf.php file
 
 		$zanataUrl = $GLOBALS['conf']['zanata']['url'];
 		$user = $GLOBALS['conf']['zanata']['user'];
 		$apiKey = $GLOBALS['conf']['zanata']['apiKey'];
-		$projectSlug = '';
-		$iterationSlug = '';
 
-		// Attempt to find the repo name in the config.ini file
+		// Attempt to find the repo name in the TMS conf.php file
 		if (isset($GLOBALS['conf']['repo'][$this->repoName]))
 		{
 			$projectSlug = $GLOBALS['conf']['repo'][$this->repoName]['projectSlug'];
@@ -395,15 +414,20 @@ class Babelwatch
 		}
 		else
 		{
-			exit("Unknown project, no section $this->repoName in conf.php file");
+			exit("Unknown project, no section '{$this->repoName}' in conf.php file");
 		}
 
-		// Update the source entries on Zanata!
-		$zanataToolkit = new ZanataPHPToolkit($user, $apiKey, $projectSlug, $iterationSlug, $zanataUrl, true);
-
-		$zanataToolkit->pushPotEntries($newPot, $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName'], 'en-GB');
-		echo "===\n";
+		$this->tmsToolkit = new ZanataPHPToolkit($user, $apiKey, $projectSlug, $iterationSlug, $zanataUrl, false);
 	}
+
+	public function getTmsToolkit()
+	{
+		if (!isset($this->tmsToolkit))
+			$this->createTmsToolkit();
+
+		return $this->tmsToolkit;
+	}
+
 
 	/**
 	 * Main update function, does 3 things:
@@ -537,10 +561,10 @@ class Babelwatch
 		// Create the changeset and bind it to the repo
 		$sqlNewChangeset =
 				"INSERT INTO bw_changeset (hg_id, repo_id, user_id, summary, tag, date)
-					VALUES (UNHEX(:changeset), :repoId, :userId, :summary, :tag, :date)
+					VALUES (:changeset, :repoId, :userId, :summary, :tag, :date)
 					ON DUPLICATE KEY UPDATE hg_id = hg_id";
 		$queryNewChangeset = $this->dbHandle->prepare($sqlNewChangeset);
-		$queryNewChangeset->bindParam(':changeset', $changeset, PDO::PARAM_INT);
+		$queryNewChangeset->bindParam(':changeset', $changeset, PDO::PARAM_STR);
 		$queryNewChangeset->bindParam(':repoId', $repoId, PDO::PARAM_INT);
 		$queryNewChangeset->bindParam(':userId', $userRow['id'], PDO::PARAM_INT);
 		$queryNewChangeset->bindParam(':summary', $summary, PDO::PARAM_STR);
@@ -551,11 +575,11 @@ class Babelwatch
 		// Check changeset
 		$sqlChangesetCheck =
 				"SELECT * FROM bw_changeset
-					WHERE hg_id = UNHEX(:changeset)
+					WHERE hg_id = :changeset
 					AND repo_id = :repoId
 					LIMIT 0,1";
 		$queryChangesetCheck = $this->dbHandle->prepare($sqlChangesetCheck);
-		$queryChangesetCheck->bindParam(':changeset', $changeset, PDO::PARAM_INT);
+		$queryChangesetCheck->bindParam(':changeset', $changeset, PDO::PARAM_STR);
 		$queryChangesetCheck->bindParam(':repoId', $repoId, PDO::PARAM_INT);
 		$queryChangesetCheck->execute();
 
@@ -687,7 +711,7 @@ class Babelwatch
 	public function log()
 	{
 		$sql =
-				'SELECT HEX(chg.hg_id) as chgId, chg.summary, user.name, string.content, glue.action
+				'SELECT chg.hg_id as chgId, chg.summary, user.name, string.content, glue.action
 					FROM bw_changeset_string AS glue
 					JOIN bw_string AS string ON glue.string_id = string.id
 					JOIN bw_changeset AS chg ON glue.changeset_id = chg.id
@@ -721,10 +745,16 @@ class Babelwatch
 		return $logs;
 	}
 
-	public function findStringAtRev($rev)
+	public function diffBetweenRevisions($rev1, $rev2)
 	{
+		$startDate = $this->getRevisionDateById($rev1);
+		$endDate = $this->getRevisionDateById($rev2);
+
 		$sql =
-		'SELECT str.content, chgstr.action FROM bw_changeset_string AS chgstr
+		'SELECT
+		str.content AS str,
+		chgstr.action AS action
+		FROM bw_changeset_string AS chgstr
 		JOIN
 			(SELECT chg.id AS last_chg_id,
 					foo.string_id
@@ -738,13 +768,76 @@ class Babelwatch
 					ON chg.id = chgstr.changeset_id
 				JOIN bw_string as str
 					ON chgstr.string_id = str.id
-				WHERE chg.id = :rev
+				JOIN bw_repo AS repo
+					ON chg.repo_id = repo.id
+				WHERE chg.date > :startDate
+				AND chg.date <= :endDate
+				AND repo.name = :repoName
 				GROUP BY chgstr.string_id) AS foo
 				ON chg.date = foo.last_chg_time) AS bar
 			ON chgstr.changeset_id = bar.last_chg_id
 			AND chgstr.string_id = bar.string_id
 		JOIN bw_string as str
 			ON bar.string_id = str.id';
+
+		$query = $this->dbHandle->prepare($sql);
+		$query->bindParam(':repoName', $this->repoName);
+		$query->bindParam(':startDate', $startDate);
+		$query->bindParam(':endDate', $endDate);
+		$query->execute();
+
+		$content = array('a' => array(), 'r' => array());
+		while($row = $query->fetch(PDO::FETCH_ASSOC))
+		{
+			array_push($content[$row['action']], $row['str']);
+		}
+
+		return $content;
+	}
+
+	public function stringStatesAtDate($date)
+	{
+		return $this->diffBetweenDates(0, $date);
+	}
+
+	public function getPotAtRevision($rev)
+	{
+		chdir($this->repoPath);
+		// Keep the current revision in mind
+		$oldRev = trim(shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
+
+		// Update to the specified revision
+		exec("hg update --clean --rev $rev");
+
+		// Rebuild POT file
+		$potfiles = $this->resourceExtractor->buildGettextFiles();
+
+		// Re-update to previous revision
+		exec("hg update --clean --rev $oldRev");
+
+		// Parse it and return the entries
+		require_once($this->poToolkitPath . 'POFile.php');
+
+		$potfile = new POFile($potfiles['new']);
+
+		return $potfile;
+	}
+
+	public function getRevisionDateById($revId)
+	{
+		$sql =
+				'SELECT chg.date AS date
+				 FROM bw_changeset AS chg
+						WHERE chg.hg_id = :revId
+						LIMIT 0,1';
+
+		$query = $this->dbHandle->prepare($sql);
+		$query->bindParam(':revId', $revId);
+		$query->execute();
+
+		$row = $query->fetch(PDO::FETCH_ASSOC);
+
+		return $row['date'];
 	}
 
 	private function findRevId($rev)
@@ -753,6 +846,47 @@ class Babelwatch
 		$query = $this->dbHandle->prepare($sql);
 		$query->bindParam(':repoName', $this->repoName);
 		$query->execute();
+	}
+
+	public function getRevisions($repo)
+	{
+		$sql =
+		'SELECT
+		chg.id AS id,
+		chg.hg_id AS hg_id,
+		user.name AS username,
+		chg.summary AS summary,
+		chg.date AS date,
+		chg.tag AS tag
+		 FROM bw_changeset AS chg
+				JOIN bw_repo AS repo
+					ON repo.id = chg.repo_id
+				JOIN bw_user AS user
+					ON chg.user_id = user.id
+				WHERE repo.name = :repoName
+				ORDER BY chg.date';
+
+		$query = $this->dbHandle->prepare($sql);
+		$query->bindParam(':repoName', $this->repoName);
+		$query->execute();
+
+		$changesets = array();
+
+		while($row = $query->fetch(PDO::FETCH_ASSOC))
+		{
+			$hgId = strtolower($row['hg_id']);
+			$chgArray = array(
+				'id' => $row['id'],
+				'user' => $row['username'],
+				'summary' => $row['summary'],
+				'date' => $row['date'],
+				'tag' => $row['tag']
+			);
+
+			$changesets[$hgId] = $chgArray;
+		}
+
+		return $changesets;
 	}
 
 	/**

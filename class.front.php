@@ -76,6 +76,12 @@ REPO;
 		echo $body;
 	}
 
+	/**
+	 *
+	 * @param $stringTable
+	 *
+	 * @return string
+	 */
 	public function displayStringTable($stringTable)
 	{
 		$out = '';
