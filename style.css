@@ -3,32 +3,63 @@ body {
     font-family: verdana;
 }
 
+.big_table td
+{
+    vertical-align: top;
+}
+
+.changeset
+{
+    float: left;
+    display: inline-table;
+    width: 50%;
+    table-layout: fixed;
+    background: #FFF;
+    border: 1px solid black;
+}
+
+.addedRow, .removedRow
+{
+    border: 1px solid black;
+    width: 100%;
+}
+
 .changeset, .addedRow, .removedRow
 {
-	border: 1px solid black;
-	width: 100%;
-	table-layout: fixed;
-	background: #FFF;
+    table-layout: fixed;
+    background: #FFF;
+    border: 1px solid black;
+    width: 100%;
 }
 
 .addedRow
 {
 	background-color: #27ae60;
 	color: white;
-	size: 50%;
+	/*size: 50%;*/
 }
 
 .removedRow
 {
 	background-color: #c0392b;
 	color: white;
-	size: 50%;
+	/*size: 50%;*/
 }
 
 a
 {
-	text-decoration: none;
+    text-decoration: none;
+}
+
+.added_string
+{
 	color: white;
+}
+
+.spira_link
+{
+    font-weight: bold;
+    color: #c0392b;
 }
 
 input[type=radio]
@@ -36,7 +67,7 @@ input[type=radio]
 	display: none;
 }
 
-label
+.tab_label
 {
 	cursor: pointer;
 	background: #eee;
@@ -52,10 +83,19 @@ label
 
 input:checked + label 
 {
-	top: 0;
-	border: 1px solid;
-	border-bottom: 5px solid;
-	background:#555;
-  border-color: #000;
-  color: #FFF;
+    top: 0;
+    border: 1px solid;
+    border-bottom: 5px solid;
+    background:#555;
+    border-color: #000;
+    color: #FFF;
+}
+
+.exception
+{
+    background: #c0392b;
+    border: 1px solid;
+    color: #eeeeee;
+    font-weight: bold;
+    padding: 5px;
 }

@@ -1,4 +1,5 @@
 <?php
+set_time_limit(0);
 require_once('conf.php');
 require_once('class.babelwatch.php');
 require_once('class.front.php');
@@ -8,9 +9,16 @@ $front = new Front();
 
 $front->echoHeader();
 
-$repoName = 'test';
+// Choose the repo via the GET parameter
+if (!isset($_GET['repo']))
+	return;
+
+$repoName = $_GET['repo'];
 $repoInfo = $GLOBALS['conf']['repo'][$repoName];
 $blacklist = (array_key_exists('blacklist', $repoInfo)) ? $repoInfo['blacklist'] : array();
+
+$start = '';
+$end = '';
 
 $resUpdater = new $repoInfo['resourceExtractorClass'](
 	$repoName,
@@ -33,9 +41,6 @@ $tracker = new Babelwatch(
 	$resUpdater,
 	$repoInfo['operations']);
 
-
-$changesets = $tracker->getRevisions('test');
-
 $diffTable = '';
 
 if (isset($_GET['start']) && isset($_GET['end']))
@@ -43,81 +48,77 @@ if (isset($_GET['start']) && isset($_GET['end']))
 	$start = $_GET['start'];
 	$end = $_GET['end'];
 
-	$potfile = $tracker->getPotAtRevision($start);
-
-	$diffInfo = $tracker->diffBetweenRevisions($start, $end);
-	$stringTable = array('a' => array(), 'r' => array());
-
-	$tmsToolkit = $tracker->getTmsToolkit();
-
-	// Process added strings
-	if (array_key_exists('a', $diffInfo))
+	// Retrieve the id of the revisions (full hash format)
+	try
 	{
-		foreach ($diffInfo['a'] as $string)
-		{
-			// If the added string already exists at the start date, ignore it
-			if ($potfile->getEntry($string) !== false)
-				continue;
-			$url = $tmsToolkit->getTextflowWebTransUrl($string, 'fr-FR', 'fr', $repoInfo['sourceDocName']);
-
-			// Update $data
-			array_push($stringTable['a'], array('string' => htmlentities($string), 'url' => $url));
-		}
+		$startRevisionFullId = $tracker->getFullRevisionId($start);
+		$endRevisionFullId = $tracker->getFullRevisionId($end);
+	}
+	catch (RuntimeException $e)
+	{
+		$front->displayException($e);
 	}
 
-	if (array_key_exists('r', $diffInfo))
+	if (!empty($startRevisionFullId) && !empty($endRevisionFullId))
 	{
-		foreach ($diffInfo['r'] as $string)
-		{
-			// If the removed string didn't exist to start with, ignore it
-			if ($potfile->getEntry($string) === false)
-				continue;
+		$tmsToolkit = $tracker->getTmsToolkit();
 
-			array_push($stringTable['r'], array('string' => htmlentities($string)));
+		if ($tracker->isRevisionInDb($startRevisionFullId) &&	$tracker->isRevisionInDb($endRevisionFullId))
+		{
+			// If both revisions exist in the db
+			// we only need to rebuild the POT file
+			// for the starting revision
+			$diffInfo = $tracker->diffBetweenRevisions($startRevisionFullId, $endRevisionFullId);
+			$diffTable = $front->displayStringTable($diffInfo);
+		}
+		else
+		{
+			// Else if one of the revisions is not in the db,
+			// Rebuild POT for both revisions and compare them
+			$startPot = $tracker->getPotAtRevision($startRevisionFullId);
+			$endPot = $tracker->getPotAtRevision($endRevisionFullId);
+
+			require_once($GLOBALS['conf']['pophpPath'] . 'POUtils.php');
+			$utils = new POUtils();
+
+			$diffInfo = $utils->compare($startPot, $endPot);
+
+			$stringTable = array('a' => array(), 'r' => array());
+
+			// Process added strings
+			foreach ($diffInfo['secondOnly'] as $entry)
+			{
+				$string = $entry->getSource();
+				$ref = $entry->getReferences($repoInfo['sourceFolder']);
+				$url = $tmsToolkit->getTextflowWebTransUrl($string, 'fr-FR', 'fr', $repoInfo['sourceDocName']);
+
+				// Update $data
+				array_push($stringTable['a'], array('string' => htmlentities($string), 'url' => $url, 'ref' => $ref));
+			}
+
+			foreach ($diffInfo['firstOnly'] as $entry)
+			{
+				$string = $entry->getSource();
+				$ref = $entry->getReferences($repoInfo['sourceFolder']);
+
+				array_push($stringTable['r'], array('string' => htmlentities($string), 'ref' => $ref));
+			}
+			$diffTable = $front->displayStringTable($stringTable);
 		}
 	}
-	$diffTable = $front->displayStringTable($stringTable);
 }
 
 
 echo <<<HTML
 <form action="" method=get>
-	<select name=start>
-HTML;
-
-foreach ($changesets as $hgId => $chg)
-{
-	$id = $chg['id'];
-	$summary = $chg['summary'];
-	$date = $chg['date'];
-	$selected = (isset($start) && $start === $id) ? 'selected' : '';
-	echo <<<SELECT
-	<option value="$hgId" $selected>$summary - $date</option>
-SELECT;
-}
-
-echo <<<HTML
-	</select>
-	<select name=end>
-HTML;
-
-foreach ($changesets as $hgId => $chg)
-{
-	$id = $chg['id'];
-	$summary = $chg['summary'];
-	$date = $chg['date'];
-	$selected = (isset($end) && $end === $id) ? 'selected' : '';
-	echo <<<SELECT
-	<option value="$hgId" $selected>$summary - $date</option>
-SELECT;
-}
-
-echo <<<HTML
-	</select>
+	<label class=form_label>Start revision: </label>
+	<input type=text name=start value=$start>
+	<label class=form_label>End revision: </label>
+	<input type=text name=end value=$end>
+	<input type=hidden name=repo value=$repoName>
 	<input type=submit value=Go>
 </form>
 
 $diffTable
 HTML;
-
 $front->echoFooter();

@@ -98,11 +98,13 @@ class StandardResourceExtractor
 			$this->poUtils->initGettextFile($this->frPoFile);
 	}
 
-	public function buildGettextFromAllStrings()
+	public function buildGettextFromAllStrings($verbose)
 	{
-		echo "===\nUpdating po files for {$this->repoName}...\n";
+		if ($verbose)
+			echo "===\nUpdating po files for {$this->repoName}...\n";
+
 		if (empty($this->extensions))
-			throw new Exception("No extension specified for string extraction");
+			throw new RuntimeException("No extension specified for string extraction");
 
 		$potLists = array();
 
@@ -182,7 +184,8 @@ class StandardResourceExtractor
 			}
 		}
 
-		echo "===\n";
+		if ($verbose)
+			echo "===\n";
 		return array(
 			'old' => $this->oldPotFileName,
 			'new' => $this->potFileName);

@@ -183,7 +183,7 @@ class Babelwatch
 				exec("hg update --clean --rev $rev");
 
 				if ($this->hasToPerform(UPDATE_POT))
-					$potFiles = $this->resourceExtractor->buildGettextFiles();
+					$potFiles = $this->resourceExtractor->buildGettextFiles(true);
 				else
 					$potFiles = $this->resourceExtractor->getGettextFilesPath();
 
@@ -227,7 +227,7 @@ class Babelwatch
 			exec("hg update --clean --rev $rev");
 
 			if ($this->hasToPerform(UPDATE_POT))
-				$potFiles = $this->resourceExtractor->buildGettextFiles();
+				$potFiles = $this->resourceExtractor->buildGettextFiles(true);
 			else
 				$potFiles = $this->resourceExtractor->getGettextFilesPath();
 
@@ -367,7 +367,7 @@ class Babelwatch
 		chdir($this->repoPath);
 		exec("hg update --clean --rev $rev");
 
-		$this->resourceExtractor->buildGettextFiles();
+		$this->resourceExtractor->buildGettextFiles(true);
 	}
 
 	/**
@@ -668,7 +668,9 @@ class Babelwatch
 		{
 			$matches = array();
 			// Extract the filepath and line number
-			if (preg_match("/(.*):(.*)/", $ref, $matches) && count($matches) === 3)
+			$bool = preg_match("/(.*):(.*)/", $ref, $matches);
+			print_r($matches);
+			if ($bool && count($matches) === 3)
 			{
 				$filepath = $matches[1];
 				$line = $matches[2];
@@ -745,6 +747,15 @@ class Babelwatch
 		return $logs;
 	}
 
+	/**
+	 * Return an array containing new strings and removed
+	 * strings between two revisions.
+	 *
+	 * @param string $rev1 The starting revision (full hash format)
+	 * @param string $rev2 The ending revision (full hash format)
+	 *
+	 * @return array
+	 */
 	public function diffBetweenRevisions($rev1, $rev2)
 	{
 		$startDate = $this->getRevisionDateById($rev1);
@@ -786,20 +797,70 @@ class Babelwatch
 		$query->bindParam(':endDate', $endDate);
 		$query->execute();
 
-		$content = array('a' => array(), 'r' => array());
+		$diffInfo = array('a' => array(), 'r' => array());
 		while($row = $query->fetch(PDO::FETCH_ASSOC))
 		{
-			array_push($content[$row['action']], $row['str']);
+			array_push($diffInfo[$row['action']], array('string' => $row['str']));
 		}
 
-		return $content;
+		// Process the diff result
+		$potfile = $this->getPotAtRevision($rev1);
+		$tmsToolkit = $this->getTmsToolkit();
+
+		foreach ($diffInfo as $action => $entries)
+		{
+			foreach ($entries as $id => $entry)
+			{
+				if ($action === 'a' && $potfile->getEntry($entry['string']) !== false)
+				{
+					unset($diffInfo['a'][$id]);
+				}
+				else if ($action === 'r' && $potfile->getEntry($entry['string']) === false)
+				{
+					unset($diffInfo['r'][$id]);
+				}
+				else if ($action === 'a')
+				{
+					$url = $tmsToolkit->getTextflowWebTransUrl($entry['string'], 'fr-FR', 'fr', $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName']);
+					$diffInfo[$action][$id]['url'] = $url;
+				}
+			}
+		}
+
+		return $diffInfo;
 	}
 
-	public function stringStatesAtDate($date)
+	/**
+	 * Check whether a revision is in babel's database
+	 *
+	 * @param string $revision The revision (full hash format)
+	 *
+	 * @return bool
+	 */
+	public function isRevisionInDb($revision)
 	{
-		return $this->diffBetweenDates(0, $date);
+		$sql = 'SELECT * FROM bw_changeset WHERE bw_changeset.hg_id = :revision';
+		$query = $this->dbHandle->prepare($sql);
+		$query->bindParam(':revision', $revision, PDO::PARAM_STR);
+		$query->execute();
+
+		if ($query->rowCount() === 0)
+			return false;
+		return true;
 	}
 
+	/**
+	 * Return the array of POEntry objects
+	 * present at a specific revision.
+	 *
+	 * This is often called by the web server,
+	 * so appropriate rights will have to be set
+	 * on the asset folder ($this->assetPath).
+	 *
+	 * @param string $rev The revision id (any format)
+	 *
+	 * @return POFile
+	 */
 	public function getPotAtRevision($rev)
 	{
 		chdir($this->repoPath);
@@ -810,7 +871,7 @@ class Babelwatch
 		exec("hg update --clean --rev $rev");
 
 		// Rebuild POT file
-		$potfiles = $this->resourceExtractor->buildGettextFiles();
+		$potfiles = $this->resourceExtractor->buildGettextFiles(false);
 
 		// Re-update to previous revision
 		exec("hg update --clean --rev $oldRev");
@@ -823,6 +884,14 @@ class Babelwatch
 		return $potfile;
 	}
 
+	/**
+	 * Return the date of a revision given
+	 * its full hash id.
+	 *
+	 * @param string $revId The revision (full hash format)
+	 *
+	 * @return string
+	 */
 	public function getRevisionDateById($revId)
 	{
 		$sql =
@@ -840,53 +909,31 @@ class Babelwatch
 		return $row['date'];
 	}
 
-	private function findRevId($rev)
+	/**
+	 * Return the full hash id (the one
+	 * used in the database) of the given
+	 * revision.
+	 *
+	 * @param string $revision The revision (any format)
+	 *
+	 * @return string
+	 * @throws Exception
+	 */
+	public function getFullRevisionId($revision)
 	{
-		$sql = 'SELECT chg.id FROM bw_changeset AS chg WHERE chg.hg_id = :rev';
-		$query = $this->dbHandle->prepare($sql);
-		$query->bindParam(':repoName', $this->repoName);
-		$query->execute();
-	}
+		/**
+		 * The $revision parameter can be:
+		 * a local id
+		 * a full hash id (in which case nothing is to be done)
+		 * a tag
+		 */
+		chdir($this->repoPath);
+		$hash = trim(shell_exec('hg log --debug -r \'' . escapeshellcmd($revision) . '\' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
 
-	public function getRevisions($repo)
-	{
-		$sql =
-		'SELECT
-		chg.id AS id,
-		chg.hg_id AS hg_id,
-		user.name AS username,
-		chg.summary AS summary,
-		chg.date AS date,
-		chg.tag AS tag
-		 FROM bw_changeset AS chg
-				JOIN bw_repo AS repo
-					ON repo.id = chg.repo_id
-				JOIN bw_user AS user
-					ON chg.user_id = user.id
-				WHERE repo.name = :repoName
-				ORDER BY chg.date';
+		if (empty($hash))
+			throw new RuntimeException("Revision '$revision' could not be found in the repository '{$this->repoName}'");
 
-		$query = $this->dbHandle->prepare($sql);
-		$query->bindParam(':repoName', $this->repoName);
-		$query->execute();
-
-		$changesets = array();
-
-		while($row = $query->fetch(PDO::FETCH_ASSOC))
-		{
-			$hgId = strtolower($row['hg_id']);
-			$chgArray = array(
-				'id' => $row['id'],
-				'user' => $row['username'],
-				'summary' => $row['summary'],
-				'date' => $row['date'],
-				'tag' => $row['tag']
-			);
-
-			$changesets[$hgId] = $chgArray;
-		}
-
-		return $changesets;
+		return $hash;
 	}
 
 	/**

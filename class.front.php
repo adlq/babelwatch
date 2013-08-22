@@ -39,7 +39,7 @@ FOOTER;
 			$formattedRepoName = str_replace('.', '', $repoName);
 
 			$checked = array_key_exists('focused', $repoData) ? 'checked' : '';
-			$tabs .= "<input type=radio id=$formattedRepoName name=tab $checked><label for=$formattedRepoName>$repoName</label>";
+			$tabs .= "<input type=radio id=$formattedRepoName name=tab $checked><label class=tab_label for=$formattedRepoName>$repoName</label>";
 
 			$style .= <<<STYLE
 			<style>
@@ -59,12 +59,13 @@ STYLE;
 
 			$body .= <<<REPO
 				<div class=$formattedRepoName>
-				<h1>$repoName</h1><br>
+				<h1>$repoName (<a href="diff.php?repo=$repoName">Diff</a>)</h1><br>
 REPO;
 
 			foreach ($repoData['changesets'] as $changeset => $changesetData)
 			{
-				$body .= "<b>{$changesetData['summary']}</b> [$changeset] (<i>{$changesetData['user']}</i>)<br><br>";
+				$summary = $this->processRevisionSummary($changesetData['summary']);
+				$body .= "<b>$summary</b> [$changeset] (<i>{$changesetData['user']}</i>)<br><br>";
 				$body .= $this->displayStringTable($changesetData['stringTable']);
 			}
 
@@ -84,37 +85,59 @@ REPO;
 	 */
 	public function displayStringTable($stringTable)
 	{
-		$out = '';
+		$out = <<<BIGTABLE
+				<table class=big_table>
+				<tr>
+BIGTABLE;
 
-		$addedStringsNum = count($stringTable['a']);
-		$removedStringsNum = count($stringTable['r']);
-		$out .= <<<TABLE
-				<br><table class='changeset'>
-					<th>+ ($addedStringsNum)</th>
-					<th>- ($removedStringsNum)</th>
+		foreach ($stringTable as $action => $entries)
+		{
+			$sign = ($action === 'a') ? '+' : '-';
+
+			$count = count($stringTable[$action]);
+
+			$out .= <<<TABLE
+				<td><table class='changeset'>
+					<th>$sign ($count)</th>
 TABLE;
 
-		$addedStrings = new ArrayIterator($stringTable['a']);
-		$removedStrings = new ArrayIterator($stringTable['r']);
+			foreach ($entries as $entry)
+			{
+				$rowContent = ($action === 'a') ? "<a target=_blank class=added_string href={$entry['url']}>\"{$entry['string']}\"</a>" : "\"{$entry['string']}\"";
+				$rowClass = ($action === 'a') ? 'addedRow' : 'removedRow';
 
-		$rows = new MultipleIterator(MultipleIterator::MIT_NEED_ANY|MultipleIterator::MIT_KEYS_ASSOC);
-		$rows->attachIterator($addedStrings, 'added');
-		$rows->attachIterator($removedStrings, 'removed');
-
-		foreach($rows as $row)
-		{
-			$addedRowContent = isset($row['added']) ? "<a href={$row['added']['url']}>\"{$row['added']['string']}\"</a>" : '';
-			$removedRowContent = isset($row['removed']) ? "\"{$row['removed']['string']}\"" : '';
-
-			$out .= <<<ROW
-			<tr>
-			<td class='addedRow'>$addedRowContent</td>
-			<td class='removedRow'>$removedRowContent</td>
-			</tr>
+				$out .= <<<ROW
+					<tr>
+					<td class=$rowClass>$rowContent</td>
+					</tr>
 ROW;
+			}
+			$out .= "</table></td>";
 		}
-		$out .= "</table><br>";
 
+		$out .= "</tr></table><br><br>";
 		return $out;
+	}
+
+	public function processRevisionSummary($string)
+	{
+		$spiraRegex = "/\[([A-Z]+:0*(\d+))\]/";
+		$matches = array();
+		if (preg_match_all($spiraRegex, $string, $matches) && count($matches) === 3)
+		{
+			foreach($matches[1] as $match)
+				$string = preg_replace("/$match/", "<a class=spira_link target=_blank href=http://prod.epistema.com/spira/?artifact={$match}>$match</a>", $string);
+		}
+
+		return $string;
+	}
+
+	public function displayException($exception)
+	{
+		echo <<<EXCEPTION
+		<div class=exception>
+		{$exception->getMessage()}<br>
+		</div>
+EXCEPTION;
 	}
 }

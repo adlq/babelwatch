@@ -4,9 +4,9 @@ require_once('interface.IResourceExtractor.php');
 
 class ProjectResourceExtractor extends StandardResourceExtractor implements IResourceExtractor
 {
-	public function buildGettextFiles()
+	public function buildGettextFiles($verbose = false)
 	{
-		$potFiles = $this->buildGettextFromAllStrings();
+		$potFiles = $this->buildGettextFromAllStrings($verbose);
 
 		return $potFiles;
 	}
