@@ -669,7 +669,7 @@ class Babelwatch
 			$matches = array();
 			// Extract the filepath and line number
 			$bool = preg_match("/(.*):(.*)/", $ref, $matches);
-			print_r($matches);
+
 			if ($bool && count($matches) === 3)
 			{
 				$filepath = $matches[1];

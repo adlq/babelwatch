@@ -3,6 +3,17 @@ body {
     font-family: verdana;
 }
 
+pre {
+    white-space: pre-wrap;       /* css-3 */
+    white-space: -moz-pre-wrap;  /* Mozilla, since 1999 */
+    white-space: -pre-wrap;      /* Opera 4-6 */
+    white-space: -o-pre-wrap;    /* Opera 7 */
+    word-wrap: break-word;       /* Internet Explorer 5.5+ */
+    font-size: 18px;
+    font-family: Georgia;
+    padding: 0px 10px;
+}
+
 .big_table td
 {
     vertical-align: top;

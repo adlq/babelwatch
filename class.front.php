@@ -103,12 +103,12 @@ TABLE;
 
 			foreach ($entries as $entry)
 			{
-				$rowContent = ($action === 'a') ? "<a target=_blank class=added_string href={$entry['url']}>\"{$entry['string']}\"</a>" : "\"{$entry['string']}\"";
+				$rowContent = ($action === 'a') ? "<a target=_blank class=added_string href={$entry['url']}>{$entry['string']}</a>" : "{$entry['string']}";
 				$rowClass = ($action === 'a') ? 'addedRow' : 'removedRow';
 
 				$out .= <<<ROW
 					<tr>
-					<td class=$rowClass>$rowContent</td>
+					<td class=$rowClass><pre>$rowContent</pre></td>
 					</tr>
 ROW;
 			}
