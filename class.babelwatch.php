@@ -501,7 +501,7 @@ class Babelwatch
 					VALUES (:name)
 					ON DUPLICATE KEY UPDATE id = id";
 		$queryNewUser = $this->dbHandle->prepare($sqlNewUser);
-		$queryNewUser->bindParam(':name', $user, PDO::PARAM_STR);
+		$queryNewUser->bindParam(':name', utf8_encode($user), PDO::PARAM_STR);
 		$queryNewUser->execute();
 
 		// Select the user
