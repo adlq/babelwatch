@@ -133,7 +133,7 @@ class Babelwatch
 		$this->dbHandle = new PDO(
 				'mysql:host='
 				. $this->dbConf['host'],
-				$this->dbConf['user'], $this->dbConf['pwd']);
+				$this->dbConf['user'], $this->dbConf['pwd'], array(\PDO::MYSQL_ATTR_INIT_COMMAND =>  'SET NAMES utf8'));
 
 		$sqlDbCheck = 'SHOW DATABASES LIKE :dbName';
 		$queryDbCheck = $this->dbHandle->prepare($sqlDbCheck);
@@ -207,8 +207,8 @@ class Babelwatch
 	 * NOTE: The revision number is local and
 	 * thus unique to each version of the repo
 	 *
-	 * @param int $rev1 Starting revision
-	 * @param int $rev2 Ending revision
+	 * @param int $rev1 Starting revision (any format)
+	 * @param int $rev2 Ending revision (any format)
 	 */
 	public function sweep($rev1, $rev2)
 	{
@@ -252,15 +252,20 @@ class Babelwatch
 	 * of revisions in between to watch over. The parameters
 	 * do not need to be ordered.
 	 *
-	 * @param string $rev1 The first revision
-	 * @param string $rev2 The second revision
-	 * @return array<int> An array of the revisions
+	 * The specified revisions must be on the same branch (in this
+	 * case the main branch).
+	 *
+	 * @param string $rev1 The first revision (any format)
+	 * @param string $rev2 The second revision (any format)
+	 * @return array<int> An array of the revisions (full hash format)
 	 */
 	public function getRightRevisions($rev1, $rev2)
 	{
 		chdir($this->repoPath);
 
-		// Sort the two given revisions first
+		// The revisions can be specified in any format.
+		// They are then converted to their full hash via
+		// the sortRevisionsByDate method
 		$sortedRevisions = $this->sortRevisionsByDate($rev1, $rev2);
 		$start = $sortedRevisions['oldest'];
 		$end = $sortedRevisions['newest'];
@@ -279,7 +284,7 @@ class Babelwatch
 		{
 			array_push($revisions, $lastRevision);
 			// The '~n' sign specifies that we want the nth first ancestor of the $end revision
-			$lastRevision = trim(shell_exec('hg log -r ' . $end . '~' . $n . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
+			$lastRevision = trim(shell_exec('hg log --debug -r ' . $end . '~' . $n . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
 			$n++;
 		}
 
@@ -293,17 +298,23 @@ class Babelwatch
 	 * Given 2 local revision ids, compute the oldest
 	 * and the newest revisions.
 	 *
-	 * @param string $rev1 First revision
-	 * @param string $rev2 Second revision
+	 * @param string $rev1 First revision (any format)
+	 * @param string $rev2 Second revision (any format)
 	 *
-	 * @return array An associative array with 'oldest' and 'newest" keys
+	 * @return array An associative array with 'oldest' and 'newest' keys
+	 * with the full hash ids of the revisions
 	 */
 	private function sortRevisionsByDate($rev1, $rev2)
 	{
 		chdir($this->repoPath);
 
-		$rev1 = $this->getLocalRevisionId($rev1);
-		$rev2 = $this->getLocalRevisionId($rev2);
+		/**
+		 * If both revisions are the same, return a dummy array.
+		 * We can only detect the case where 'tip'==='.' by comparing
+		 * the full hash ids
+		 */
+		$rev1 = $this->getFullRevisionId($rev1);
+		$rev2 = $this->getFullRevisionId($rev2);
 
 		// If the revisions are the same, return a dummy array
 		if ($rev1 == $rev2)
@@ -335,31 +346,9 @@ class Babelwatch
 	}
 
 	/**
-	 * Return the local id for a given revision.
-	 * @param string $rev The revision. Can be '.' or 'tip'
-	 *
-	 * @return string
-	 */
-	private function getLocalRevisionId($rev)
-	{
-		switch($rev)
-		{
-			case '.':
-				// Retrieve the int value of the current code revision
-				return trim(shell_exec('hg log -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
-			case 'tip':
-				// Retrieve the int value of the tip revision
-				return trim(shell_exec('hg log -r tip | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
-			default:
-				return $rev;
-		}
-
-	}
-
-	/**
 	 * Initializes the tracker at a specific revision
 	 *
-	 * @param string $rev The revision
+	 * @param string $rev The revision (any format)
 	 */
 	public function initAtRevision($rev)
 	{
@@ -713,12 +702,14 @@ class Babelwatch
 	public function log()
 	{
 		$sql =
-				'SELECT chg.hg_id as chgId, chg.summary, user.name, string.content, glue.action
+				'SELECT chg.hg_id as chgId, chg.summary, user.name, string.content, glue.action, ref.filepath, ref.line
 					FROM bw_changeset_string AS glue
 					JOIN bw_string AS string ON glue.string_id = string.id
 					JOIN bw_changeset AS chg ON glue.changeset_id = chg.id
 					JOIN bw_repo AS repo ON chg.repo_id = repo.id
 					JOIN bw_user AS user ON chg.user_id = user.id
+					JOIN bw_string_ref AS str_ref ON string.id = str_ref.string_id
+					JOIN bw_reference AS ref ON str_ref.ref_id = ref.id
 					WHERE repo.name LIKE :repoName
 					ORDER BY chg.date DESC';
 		$query = $this->dbHandle->prepare($sql);
@@ -731,20 +722,47 @@ class Babelwatch
 		{
 			$changeset = strtolower($row['chgId']);
 			$action = $row['action'];
-			$string = $row['content'];
 			$user = $row['name'];
 			$summary = $row['summary'];
 
+			$string = $row['content'];
+			$filepath = $row['filepath'];
+			$line = $row['line'];
+			$reference = "$filepath:$line";
+
+
 			if (!array_key_exists($changeset, $logs))
-					$logs[$changeset] = array('user' => $user, 'summary' => $summary);
+				$logs[$changeset] = array('user' => $user, 'summary' => $summary);
 
 			if (!array_key_exists($action, $logs[$changeset]))
-					$logs[$changeset][$action] = array();
+				$logs[$changeset][$action] = array();
 
-			array_push($logs[$changeset][$action], $string);
+			// If string already exist, then this means that we have more than one
+			// reference. If so, push the new reference onto the string array
+			$stringArrayId = $this->doesStringExist($string, $logs[$changeset][$action]);
+			if ($stringArrayId !== false)
+			{
+				array_push($logs[$changeset][$action][$stringArrayId]['references'], $reference);
+			}
+			else
+			{
+				$stringArray = array('content' => $string, 'references' => array($reference));
+				array_push($logs[$changeset][$action], $stringArray);
+			}
 		}
 
 		return $logs;
+	}
+
+	private function doesStringExist($string, $array)
+	{
+		foreach ($array as $id => $stringArray)
+		{
+			if ($stringArray['content'] === $string)
+				return $id;
+		}
+
+		return false;
 	}
 
 	/**

@@ -3,7 +3,7 @@
 -- Server version:               5.5.24 - MySQL Community Server (GPL)
 -- Server OS:                    Win32
 -- HeidiSQL version:             6.0.0.3991
--- Date/time:                    2013-08-02 12:49:12
+-- Date/time:                    2013-08-26 10:54:15
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -18,7 +18,7 @@ USE `babelwatch`;
 -- Dumping structure for table babelwatch.bw_changeset
 CREATE TABLE IF NOT EXISTS `bw_changeset` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
-  `hg_id` varchar(40) NOT NULL,
+  `hg_id` varchar(40) COLLATE utf8_bin NOT NULL,
   `repo_id` int(10) DEFAULT NULL,
   `user_id` int(10) DEFAULT NULL,
   `summary` varchar(500) COLLATE utf8_bin DEFAULT NULL,
@@ -92,6 +92,7 @@ CREATE TABLE IF NOT EXISTS `bw_string_ref` (
   `string_id` int(10) DEFAULT NULL,
   `ref_id` int(10) DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `string_id_ref_id` (`string_id`,`ref_id`),
   KEY `FK__bw_string` (`string_id`),
   KEY `FK__bw_reference` (`ref_id`),
   CONSTRAINT `FK__bw_string` FOREIGN KEY (`string_id`) REFERENCES `bw_string` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,

@@ -1,11 +1,16 @@
 <?php
 class Front
 {
+	private $cellId;
+
 	public function __construct()
 	{
-
+		$this->cellId = 0;
 	}
 
+	/**
+	 * Print the HTML header
+	 */
 	public function echoHeader()
 	{
 		echo <<<HEADER
@@ -20,14 +25,37 @@ class Front
 HEADER;
 	}
 
+	/**
+	 * Print the HTML footer
+	 */
 	public function echoFooter()
 	{
 		echo <<<FOOTER
 		</body>
+		<script type='text/javascript'>
+		function toggleVisibility(id)
+		{
+			var e = document.getElementById(id);
+			if (e.style.display == 'block')
+				e.style.display = 'none';
+			else
+				e.style.display = 'block';
+		}
+		</script>
 		</html>
 FOOTER;
 	}
 
+	/**
+	 * Return the HTML to display the tabs for given repositories
+	 *
+	 * @param array $data An array respecting the following structure:
+	 *
+	 * repo > changeset > action > entry > content
+	 *																	 > url
+	 *																	 > references
+	 *
+	 */
 	public function displayRepo($data)
 	{
 		$tabs = '';
@@ -78,8 +106,19 @@ REPO;
 	}
 
 	/**
+	 * Return the HTML to display a table containing:
+	 * - 'added' and 'removed' string columns;
+	 * - references for each string;
+	 * - for 'added' strings, URL to the entry on the TMS
 	 *
-	 * @param $stringTable
+	 * @param array $stringTable An array respecting the
+	 * following structure:
+	 *
+	 * action > entry > content
+	 *								> url
+	 *								> references
+	 *
+	 * action is either 'a' ('added') or 'r' ('removed')
 	 *
 	 * @return string
 	 */
@@ -103,12 +142,21 @@ TABLE;
 
 			foreach ($entries as $entry)
 			{
-				$rowContent = ($action === 'a') ? "<a target=_blank class=added_string href={$entry['url']}>{$entry['string']}</a>" : "{$entry['string']}";
+				$references = $this->displayReferences($entry['references']);
+				$urlButton = array_key_exists('url', $entry) ? $this->displayUrl($entry['url']) : '';
+				$rowContent = ($action === 'a') ? "{$entry['string']}" : "{$entry['string']}";
 				$rowClass = ($action === 'a') ? 'addedRow' : 'removedRow';
 
 				$out .= <<<ROW
 					<tr>
-					<td class=$rowClass><pre>$rowContent</pre></td>
+					<td class=$rowClass>
+						<table>
+							<tr>
+							<td>{$references['button']}<br>$urlButton</td>
+							<td><pre>$rowContent</pre>{$references['content']}</td>
+							</tr>
+						</table>
+					</td>
 					</tr>
 ROW;
 			}
@@ -119,6 +167,43 @@ ROW;
 		return $out;
 	}
 
+	/**
+	 * Output the HTML corresponding to a string's references.
+	 *
+	 * @param array $array An array containing the references
+	 * @return string
+	 */
+	private function displayReferences($array)
+	{
+		$this->cellId++;
+		$elementId = "ref_box_{$this->cellId}";
+		$button = "<input type=submit value=R class=ref_vis_toggler onclick=\"toggleVisibility('$elementId');\">";
+		$res = <<<REF
+		<ul id=$elementId style="display: none">
+REF;
+		foreach ($array as $ref)
+		{
+			$res .= "<li>$ref</li>";
+		}
+
+		$res .= '</ul>';
+
+		return array('button' => $button, 'content' => $res);
+	}
+
+	private function displayUrl($url)
+	{
+		return "<a target=_blank class=added_string href=$url><input type=submit value=Z class=tms_vis_toggler></a>";
+	}
+
+	/**
+	 * Process a revision summary. Replace the Spira artifact
+	 * by an URL.
+	 *
+	 * @param string $string The summary
+	 *
+	 * @return mixed
+	 */
 	public function processRevisionSummary($string)
 	{
 		$spiraRegex = "/\[([A-Z]+:0*(\d+))\]/";
@@ -132,6 +217,11 @@ ROW;
 		return $string;
 	}
 
+	/**
+	 * Display a raised exception
+	 *
+	 * @param Exception $exception The exception
+	 */
 	public function displayException($exception)
 	{
 		echo <<<EXCEPTION

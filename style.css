@@ -12,6 +12,7 @@ pre {
     font-size: 18px;
     font-family: Georgia;
     padding: 0px 10px;
+    margin: 3px;
 }
 
 .big_table td
@@ -29,6 +30,11 @@ pre {
     border: 1px solid black;
 }
 
+.changeset ul
+{
+    font-family: "Courier New";
+}
+
 .addedRow, .removedRow
 {
     border: 1px solid black;
@@ -43,18 +49,22 @@ pre {
     width: 100%;
 }
 
+.addedRow, .removedRow
+{
+    color: white;
+    padding: 0 5px;
+}
+
 .addedRow
 {
 	background-color: #27ae60;
 	color: white;
-	/*size: 50%;*/
 }
 
 .removedRow
 {
 	background-color: #c0392b;
-	color: white;
-	/*size: 50%;*/
+
 }
 
 a
@@ -109,4 +119,11 @@ input:checked + label
     color: #eeeeee;
     font-weight: bold;
     padding: 5px;
+}
+
+.ref_vis_toggler, .tms_vis_toggler
+{
+    cursor: pointer;
+    background: #ffeedd;
+    font-weight: bold;
 }

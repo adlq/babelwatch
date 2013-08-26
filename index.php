@@ -48,21 +48,27 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 				// Process added strings
 				if (array_key_exists('a', $changesetInfo))
 				{
-					foreach ($changesetInfo['a'] as $string)
+					foreach ($changesetInfo['a'] as $stringArray)
 					{
+						$string = $stringArray['content'];
+						$refs = $stringArray['references'];
+
 						$url = $tmsToolkit->getTextflowWebTransUrl($string, 'fr-FR', 'fr', $repoInfo['sourceDocName']);
 
 						// Update $data
-						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['a'], array('string' => htmlentities($string), 'url' => $url));
+						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['a'], array('string' => htmlentities($string), 'url' => $url, 'references' => $refs));
 					}
 				}
 
 				if (array_key_exists('r', $changesetInfo))
 				{
-					foreach ($changesetInfo['r'] as $string)
+					foreach ($changesetInfo['r'] as $stringArray)
 					{
+						$string = $stringArray['content'];
+						$ref = $stringArray['references'];
+
 						// Update $data
-						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['r'], array('string' => htmlentities($string)));
+						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['r'], array('string' => htmlentities($string), 'references' => $ref));
 					}
 				}
 			}

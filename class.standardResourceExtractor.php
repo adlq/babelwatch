@@ -98,6 +98,19 @@ class StandardResourceExtractor
 			$this->poUtils->initGettextFile($this->frPoFile);
 	}
 
+	/**
+	 * Generate POT files for this repo, with the appropriate parameters
+	 * (source folder, extensions, blacklisted folders).
+	 *
+	 * This method returns the following array:
+	 * 'old' => path to the old POT file
+	 * 'new' => path to the new POT file
+	 *
+	 * @param boolean $verbose Whether to print out actions or not
+	 *
+	 * @return array
+	 * @throws RuntimeException
+	 */
 	public function buildGettextFromAllStrings($verbose)
 	{
 		if ($verbose)
@@ -191,45 +204,45 @@ class StandardResourceExtractor
 			'new' => $this->potFileName);
 	}
 
-    /**
-     * List all files with certain types in a given folder,
-     * and write them, one per line, in a file.
-     *
-     * @param string $dir Path of the directory inside the repo
-     * @param string $ext Extension to consider
-     * @param string $output Path to the output file
-     * @param array $blacklist Folders to be ignored
-     */
-    private function listFilesToProcess($dir, $ext, $output, $blacklist = array())
-    {
-			chdir($this->repoPath);
-			$files = shell_exec("hg locate --include $dir");
-			$files = explode("\n", $files);
+	/**
+	 * List all files with certain types in a given folder,
+	 * and write them, one per line, in a file.
+	 *
+	 * @param string $dir Path of the directory inside the repo
+	 * @param string $ext Extension to consider
+	 * @param string $output Path to the output file
+	 * @param array $blacklist Folders to be ignored
+	 */
+	private function listFilesToProcess($dir, $ext, $output, $blacklist = array())
+	{
+		chdir($this->repoPath);
+		$files = shell_exec("hg locate --include $dir");
+		$files = explode("\n", $files);
 
-			foreach($files as $id => $entry)
+		foreach($files as $id => $entry)
+		{
+			if (pathinfo($entry, PATHINFO_EXTENSION) !== $ext)
 			{
-				if (pathinfo($entry, PATHINFO_EXTENSION) !== $ext)
+					unset($files[$id]);
+			}
+			else if (!empty($blacklist)) 				// Only check blacklist folders if $blacklist is non-empty
+			{
+				foreach ($blacklist as $blFolder)
 				{
+					$dirs = pathinfo($entry, PATHINFO_DIRNAME);
+					// If at least one folder from the path coincides
+					// with one of the blacklisted folders, ignore the file
+					if (strpos($dirs, $blFolder) !== false)
 						unset($files[$id]);
 				}
-				else if (!empty($blacklist)) 				// Only check blacklist folders if $blacklist is non-empty
-				{
-					foreach ($blacklist as $blFolder)
-					{
-						$dirs = pathinfo($entry, PATHINFO_DIRNAME);
-						// If at least one folder from the path coincides
-						// with one of the blacklisted folders, ignore the file
-						if (strpos($dirs, $blFolder) !== false)
-							unset($files[$id]);
-					}
-				}
 			}
+		}
 
-			$files = implode("\n", $files);
-			file_put_contents($output, $files);
-    }
+		$files = implode("\n", $files);
+		file_put_contents($output, $files);
+	}
 
-    /**
+  /**
 	 * Check whether a gettext file has non-empty entries
 	 *
 	 * @param string $file The file to check
@@ -243,7 +256,7 @@ class StandardResourceExtractor
 		return (file_get_contents($file) !== $this->poUtils->getGettextHeader());
 	}
 
-    /**
+  /**
 	 * Return full path to the old and new POT files
 	 */
 	public function getGettextFilesPath()
