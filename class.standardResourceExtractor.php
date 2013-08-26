@@ -265,4 +265,14 @@ class StandardResourceExtractor
 			'old' => $this->oldPotFileName,
 			'new' => $this->potFileName);
 	}
+
+	/**
+	 * Return the main directory of the repo
+	 * (Where the strings are extracted from)
+	 * @return string
+	 */
+	public function getRootdir()
+	{
+		return $this->rootDir;
+	}
 }

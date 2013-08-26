@@ -39,7 +39,7 @@ if (array_key_exists($repoName, $GLOBALS['conf']['repo']))
 		switch($buildType)
 		{
 			case 'build':
-				$tracker->run();
+				$tracker->sweep('.', 'tip');
 				break;
 			case 'init':
 				if (!array_key_exists(3, $argv))

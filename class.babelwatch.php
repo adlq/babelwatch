@@ -159,50 +159,6 @@ class Babelwatch
 	}
 
 	/**
-	 * Run
-	 */
-	public function run()
-	{
-		chdir($this->repoPath);
-		$potFiles = $this->resourceExtractor->getGettextFilesPath();
-		echo "\nWORKING ON " . strtoupper($this->repoName) . "\n";
-
-		// Retrieve incoming revisions
-		$revisions = $this->getRightRevisions('.', 'tip');
-
-		if (count($revisions) === 1)
-			exit("Nothing to do");
-
-		// Iterate over all the incoming revisions
-		foreach ($revisions as $rev)
-		{
-			if ($rev !== '')
-			{
-				// Update and then execute operations
-				echo "UPDATING TO REVISION $rev...\n";
-				exec("hg update --clean --rev $rev");
-
-				if ($this->hasToPerform(UPDATE_POT))
-					$potFiles = $this->resourceExtractor->buildGettextFiles(true);
-				else
-					$potFiles = $this->resourceExtractor->getGettextFilesPath();
-
-				// Only update the TMS and the tracking if there were new or removed strings
-				$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
-				$proceed = !empty($diffStrings['added']) || !empty($diffStrings['removed']);
-
-				if ($this->hasToPerform(UPDATE_TMS) && $proceed)
-						$this->updateTMS($potFiles['new']);
-
-				if ($this->hasToPerform(UPDATE_TRACKING) && $proceed)
-					$this->updateTracking($diffStrings);
-			}
-		}
-		echo "\nWORK ON " . strtoupper($this->repoName) . " DONE\n";
-		return;
-	}
-
-	/**
 	 * Run babelwatch over a range of revisions
 	 * NOTE: The revision number is local and
 	 * thus unique to each version of the repo
@@ -212,15 +168,22 @@ class Babelwatch
 	 */
 	public function sweep($rev1, $rev2)
 	{
+		echo "\nWORKING ON " . strtoupper($this->repoName) . "\n";
+
 		chdir($this->repoPath);
 
 		// Retrieve the right revisions
-		$localRevisions = $this->getRightRevisions($rev1, $rev2);
-		// Clean init @ oldest revision
-		$this->initAtRevision($localRevisions[0]);
-		array_shift($localRevisions);
+		$revisions = $this->getRightRevisions($rev1, $rev2);
 
-		foreach ($localRevisions as $rev)
+		// If we have processed all of the revisions, do nothing
+		if (count($revisions) <= 1)
+			exit("Nothing to do");
+
+		// Clean init @ oldest revision
+		$this->initAtRevision($revisions[0]);
+		array_shift($revisions);
+
+		foreach ($revisions as $rev)
 		{
 			// Update the code
 			echo "UPDATING TO REVISION $rev...\n";
@@ -244,6 +207,8 @@ class Babelwatch
 				$this->updateTracking($diffStrings);
 			}
 		}
+
+		echo "\nWORK ON " . strtoupper($this->repoName) . " DONE\n";
 		return;
 	}
 
@@ -289,6 +254,7 @@ class Babelwatch
 		}
 
 		array_push($revisions, $lastRevision);
+
 		$revisions = array_reverse($revisions);
 
 		return $revisions;
@@ -445,8 +411,10 @@ class Babelwatch
 				$revInfo[$matches[1]] = $matches[2];
 			}
 		}
-		$revInfo['changeset'] = trim(shell_exec('hg log --debug -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
 
+		// Retrieve the full hash id for the revision
+		$revInfo['changeset'] = trim(shell_exec('hg log --debug -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
+		// Retrieve tag if it exists
 		$tag = array_key_exists('tag', $revInfo) ? $revInfo['tag'] : '';
 
 		$repoId = $this->updateRepo();
@@ -653,7 +621,7 @@ class Babelwatch
 	 */
 	private function updateStringReferences($stringId, $entry)
 	{
-		foreach($entry->getReferences('source') as $ref)
+		foreach($entry->getReferences($this->resourceExtractor->getRootDir()) as $ref)
 		{
 			$matches = array();
 			// Extract the filepath and line number
@@ -857,9 +825,12 @@ class Babelwatch
 	 */
 	public function isRevisionInDb($revision)
 	{
-		$sql = 'SELECT * FROM bw_changeset WHERE bw_changeset.hg_id = :revision';
+		$sql = 'SELECT * FROM bw_changeset AS chg
+		JOIN bw_repo AS repo ON repo.id = chg.repo_id
+		WHERE chg.hg_id = :revision AND repo.name LIKE :repoName';
 		$query = $this->dbHandle->prepare($sql);
 		$query->bindParam(':revision', $revision, PDO::PARAM_STR);
+		$query->bindParam(':repoName', $this->repoName, PDO::PARAM_STR);
 		$query->execute();
 
 		if ($query->rowCount() === 0)
