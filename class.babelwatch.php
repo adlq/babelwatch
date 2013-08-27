@@ -510,7 +510,7 @@ class Babelwatch
 					WHERE name LIKE :name
 					LIMIT 0,1";
 		$queryUserCheck = $this->dbHandle->prepare($sqlUserCheck);
-		$queryUserCheck->bindParam(':name', $user, PDO::PARAM_STR);
+		$queryUserCheck->bindParam(':name', utf8_encode($user), PDO::PARAM_STR);
 		$queryUserCheck->execute();
 
 		$userRow = $queryUserCheck->fetch(PDO::FETCH_ASSOC);
