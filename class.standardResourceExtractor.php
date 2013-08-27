@@ -106,12 +106,15 @@ class StandardResourceExtractor
 	 * 'old' => path to the old POT file
 	 * 'new' => path to the new POT file
 	 *
+	 * @param string $output Path of the output file
+	 * @param boolean $keepPreviousFile Whether to keep the previous
+	 * version of the POT file
 	 * @param boolean $verbose Whether to print out actions or not
 	 *
 	 * @return array
 	 * @throws RuntimeException
 	 */
-	public function buildGettextFromAllStrings($verbose)
+	public function buildGettextFromAllStrings($output, $keepPreviousFile, $verbose)
 	{
 		if ($verbose)
 			echo "===\nUpdating po files for {$this->repoName}...\n";
@@ -121,28 +124,35 @@ class StandardResourceExtractor
 
 		$potLists = array();
 
-		if (!file_exists($this->potFileName))
+		if ($keepPreviousFile)
 		{
-			$this->poUtils->initGettextFile($this->oldPotFileName);
-		}
-		else
-		{
-			// Initialize the POT file
-			// If there is an existing pot file, copy it and create a	fresher one
-			copy($this->potFileName, $this->oldPotFileName);
-			unlink($this->potFileName);
+			$output = $this->potFileName;
+			if (!file_exists($output))
+			{
+				$this->poUtils->initGettextFile($this->oldPotFileName);
+			}
+			else
+			{
+				// Initialize the POT file
+				// If there is an existing pot file, copy it and create a	fresher one
+				copy($this->potFileName, $this->oldPotFileName);
+				unlink($this->potFileName);
+			}
 		}
 
-		$this->poUtils->initGettextFile($this->potFileName);
+		// Whatever happens, we need to init the output file
+		$this->poUtils->initGettextFile($output);
 
-		// List all the .php and .js files to extract messages from
+		/**
+		 * Extract the strings with respect to the extensions
+		 */
 		foreach ($this->extensions as $ext)
 		{
-			// File containing the list of .php and .js files
-			$this->fileLists[$ext] = $this->assetPath . $ext . '_file_list_' . $this->repoName . '.txt';
+			// List files by extensions
+			$this->fileLists[$ext] = $output . $ext . '_file_list_' . $this->repoName . '.txt';
 			$this->listFilesToProcess($this->rootDir, $ext, $this->fileLists[$ext], $this->blacklist);
 
-			$potLists[$ext] = $this->potPath . $this->repoName . '_' . $ext . '.pot';
+			$potLists[$ext] = $output . '_' . $ext . '.pot';
 			$this->poUtils->initGettextFile($potLists[$ext]);
 
 			// Extract gettext strings
@@ -160,15 +170,18 @@ class StandardResourceExtractor
 			}
 		}
 
+		// Prepare the arguments for msgcat
 		$potPieces = implode(" ", $potLists);
 
-		// Uniquify
+		// Process the POT files by extension
 		foreach ($this->extensions as $ext)
 			exec("msguniq --sort-output --add-location --no-wrap {$potLists[$ext]} -o {$potLists[$ext]} 1> nul 2>&1");
 
-		exec("msgcat --sort-output --add-location --no-wrap $potPieces -o {$this->potFileName} 1> nul 2>&1");
+		// Concatenate all the POT files
+		exec("msgcat --sort-output --add-location --no-wrap $potPieces -o {$output} 1> nul 2>&1");
 
-		exec("msguniq --sort-output --add-location --no-wrap {$this->potFileName} -o {$this->potFileName} 1> nul 2>&1");
+		// Last check
+		exec("msguniq --sort-output --add-location --no-wrap {$output} -o {$output} 1> nul 2>&1");
 
 		// Remove temporary files
 		foreach ($this->extensions as $ext)
@@ -199,9 +212,11 @@ class StandardResourceExtractor
 
 		if ($verbose)
 			echo "===\n";
-		return array(
-			'old' => $this->oldPotFileName,
-			'new' => $this->potFileName);
+
+		if ($keepPreviousFile)
+			return array('old' => $this->oldPotFileName, 'new' => $this->potFileName);
+		else
+			return $output;
 	}
 
 	/**

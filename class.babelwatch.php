@@ -189,10 +189,10 @@ class Babelwatch
 			echo "UPDATING TO REVISION $rev...\n";
 			exec("hg update --clean --rev $rev");
 
+			$potFiles = $this->resourceExtractor->getGettextFilesPath();
+
 			if ($this->hasToPerform(UPDATE_POT))
-				$potFiles = $this->resourceExtractor->buildGettextFiles(true);
-			else
-				$potFiles = $this->resourceExtractor->getGettextFilesPath();
+				$potFiles = $this->resourceExtractor->buildGettextFiles($potFiles['new'], true, true);
 
 			// Only update the TMS and the tracking if there were new or removed strings
 			$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
@@ -322,7 +322,8 @@ class Babelwatch
 		chdir($this->repoPath);
 		exec("hg update --clean --rev $rev");
 
-		$this->resourceExtractor->buildGettextFiles(true);
+		$potFiles = $this->resourceExtractor->getGettextFilesPath();
+		$this->resourceExtractor->buildGettextFiles($potFiles['new'], true, true);
 	}
 
 	/**
@@ -500,6 +501,8 @@ class Babelwatch
 		$sqlNewUser = "INSERT INTO bw_user (name)
 					VALUES (:name)
 					ON DUPLICATE KEY UPDATE id = id";
+		var_dump($user);
+		var_dump(utf8_encode($user));
 		$queryNewUser = $this->dbHandle->prepare($sqlNewUser);
 		$queryNewUser->bindParam(':name', utf8_encode($user), PDO::PARAM_STR);
 		$queryNewUser->execute();
@@ -860,7 +863,8 @@ class Babelwatch
 		exec("hg update --clean --rev $rev");
 
 		// Rebuild POT file
-		$potfiles = $this->resourceExtractor->buildGettextFiles(false);
+		$potName = $this->assetPath . 'pot' . DIRECTORY_SEPARATOR . $rev . ".pot";
+		$potfile = $this->resourceExtractor->buildGettextFiles($potName, false, false);
 
 		// Re-update to previous revision
 		exec("hg update --clean --rev $oldRev");
@@ -868,7 +872,9 @@ class Babelwatch
 		// Parse it and return the entries
 		require_once($this->poToolkitPath . 'POFile.php');
 
-		$potfile = new POFile($potfiles['new']);
+		$potfile = new POFile($potfile);
+
+		unlink($potName);
 
 		return $potfile;
 	}
