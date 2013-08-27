@@ -144,7 +144,6 @@ TABLE;
 			{
 				$references = $this->displayReferences($entry['references']);
 				$urlButton = array_key_exists('url', $entry) ? $this->displayUrl($entry['url']) : '';
-				$rowContent = ($action === 'a') ? "{$entry['string']}" : "{$entry['string']}";
 				$rowClass = ($action === 'a') ? 'addedRow' : 'removedRow';
 
 				$out .= <<<ROW
@@ -153,7 +152,7 @@ TABLE;
 						<table>
 							<tr>
 							<td>{$references['button']}<br>$urlButton</td>
-							<td><pre>$rowContent</pre>{$references['content']}</td>
+							<td><pre>{$entry['content']}</pre>{$references['content']}</td>
 							</tr>
 						</table>
 					</td>

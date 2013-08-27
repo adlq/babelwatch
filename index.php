@@ -56,7 +56,7 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 						$url = $tmsToolkit->getTextflowWebTransUrl($string, 'fr-FR', 'fr', $repoInfo['sourceDocName']);
 
 						// Update $data
-						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['a'], array('string' => htmlentities($string), 'url' => $url, 'references' => $refs));
+						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['a'], array('content' => htmlentities($string), 'url' => $url, 'references' => $refs));
 					}
 				}
 
@@ -68,7 +68,7 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 						$ref = $stringArray['references'];
 
 						// Update $data
-						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['r'], array('string' => htmlentities($string), 'references' => $ref));
+						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['r'], array('content' => htmlentities($string), 'references' => $ref));
 					}
 				}
 			}

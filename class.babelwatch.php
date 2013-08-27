@@ -501,8 +501,6 @@ class Babelwatch
 		$sqlNewUser = "INSERT INTO bw_user (name)
 					VALUES (:name)
 					ON DUPLICATE KEY UPDATE id = id";
-		var_dump($user);
-		var_dump(utf8_encode($user));
 		$queryNewUser = $this->dbHandle->prepare($sqlNewUser);
 		$queryNewUser->bindParam(':name', utf8_encode($user), PDO::PARAM_STR);
 		$queryNewUser->execute();
@@ -699,6 +697,9 @@ class Babelwatch
 			$string = $row['content'];
 			$filepath = $row['filepath'];
 			$line = $row['line'];
+
+			// We don't use the mysql CONCAT function because
+			// there is a limit in size
 			$reference = "$filepath:$line";
 
 
@@ -753,14 +754,15 @@ class Babelwatch
 		$sql =
 		'SELECT
 		str.content AS str,
-		chgstr.action AS action
+		chgstr.action AS action,
+		ref.filepath, ref.line
 		FROM bw_changeset_string AS chgstr
 		JOIN
-			(SELECT chg.id AS last_chg_id,
+		(SELECT chg.id AS last_chg_id,
 					foo.string_id
 					FROM bw_changeset AS chg
 			JOIN
-				(SELECT
+			(SELECT
 						str.id AS string_id,
 						MAX(chg.date) AS last_chg_time
 						FROM bw_changeset_string AS chgstr
@@ -771,14 +773,18 @@ class Babelwatch
 				JOIN bw_repo AS repo
 					ON chg.repo_id = repo.id
 				WHERE chg.date > :startDate
-				AND chg.date <= :endDate
-				AND repo.name = :repoName
+	AND chg.date <= :endDate
+	AND repo.name = :repoName
 				GROUP BY chgstr.string_id) AS foo
 				ON chg.date = foo.last_chg_time) AS bar
 			ON chgstr.changeset_id = bar.last_chg_id
-			AND chgstr.string_id = bar.string_id
+	AND chgstr.string_id = bar.string_id
 		JOIN bw_string as str
-			ON bar.string_id = str.id';
+			ON bar.string_id = str.id
+		JOIN bw_string_ref as strref
+			ON str.id = strref.string_id
+		JOIN bw_reference as ref
+			ON strref.ref_id = ref.id';
 
 		$query = $this->dbHandle->prepare($sql);
 		$query->bindParam(':repoName', $this->repoName);
@@ -789,7 +795,20 @@ class Babelwatch
 		$diffInfo = array('a' => array(), 'r' => array());
 		while($row = $query->fetch(PDO::FETCH_ASSOC))
 		{
-			array_push($diffInfo[$row['action']], array('string' => $row['str']));
+			$string = $row['str'];
+			$reference = "{$row['filepath']}:{$row['line']}";
+
+			$stringArrayId = $this->doesStringExist($string, $diffInfo[$row['action']]);
+
+			if ($stringArrayId !== false)
+			{
+				array_push($diffInfo[$row['action']][$stringArrayId]['references'], $reference);
+			}
+			else
+			{
+				$stringArray = array('content' => $string, 'references' => array($reference));
+				array_push($diffInfo[$row['action']], $stringArray);
+			}
 		}
 
 		// Process the diff result
@@ -800,18 +819,22 @@ class Babelwatch
 		{
 			foreach ($entries as $id => $entry)
 			{
-				if ($action === 'a' && $potfile->getEntry($entry['string']) !== false)
+				// If the string was added but already existed in the starting revision, ignore it
+				if ($action === 'a' && $potfile->getEntry($entry['content']) !== false)
 				{
 					unset($diffInfo['a'][$id]);
 				}
-				else if ($action === 'r' && $potfile->getEntry($entry['string']) === false)
+				// If the string was removed but didn't exist in the starting revision, ignore it
+				else if ($action === 'r' && $potfile->getEntry($entry['content']) === false)
 				{
 					unset($diffInfo['r'][$id]);
 				}
+				// If the string
 				else if ($action === 'a')
 				{
-					$url = $tmsToolkit->getTextflowWebTransUrl($entry['string'], 'fr-FR', 'fr', $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName']);
+					$url = $tmsToolkit->getTextflowWebTransUrl($entry['content'], 'fr-FR', 'fr', $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName']);
 					$diffInfo[$action][$id]['url'] = $url;
+					$diffInfo[$action][$id]['references'] = $entry['references'];
 				}
 			}
 		}
