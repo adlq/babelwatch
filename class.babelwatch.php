@@ -44,8 +44,6 @@ class Babelwatch
 				$resourceExtractor = null,
 				$operations = 7)
 	{
-		$this->checkConfig();
-
 		$this->repoName = $repoName;
 		$this->repoPath = $repoPath;
 
@@ -66,63 +64,95 @@ class Babelwatch
 	/**
 	 * Check conf.php for missing parameters
 	 *
-	 * @throws Exception
+	 * @throws RuntimeException
 	 */
-	private function checkConfig()
+	public static function checkConfig()
 	{
 		if (!array_key_exists('mysql', $GLOBALS['conf']))
-			throw new Exception('No MySQL configuration found in conf.php');
+			throw new RuntimeException('No MySQL configuration found in conf.php');
 
-		if (!array_key_exists('host', $GLOBALS['conf']['mysql'])
-			|| !array_key_exists('user', $GLOBALS['conf']['mysql'])
-			|| !array_key_exists('pwd', $GLOBALS['conf']['mysql'])
-			|| !array_key_exists('db', $GLOBALS['conf']['mysql']))
-			throw new Exception('Missing parameter in MySQL configuration. Please refer to conf_sample.php');
+		$mysqlExceptionContext = array('context' => 'mysql');
+
+		Babelwatch::checkConfigKey('host', $GLOBALS['conf']['mysql'], $mysqlExceptionContext);
+		Babelwatch::checkConfigKey('user', $GLOBALS['conf']['mysql'], $mysqlExceptionContext);
+		Babelwatch::checkConfigKey('pwd', $GLOBALS['conf']['mysql'], $mysqlExceptionContext);
+		Babelwatch::checkConfigKey('db', $GLOBALS['conf']['mysql'], $mysqlExceptionContext);
 
 		if (!array_key_exists('repo', $GLOBALS['conf']) && is_array($GLOBALS['conf']['repo']))
-			throw new Exception("No repository configuration found in conf.php");
+			throw new RuntimeException("No repository configuration found in conf.php");
+
 
 		foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 		{
-			if (!is_array($repoInfo))
-				throw new Exception('Each entry in $GLOBALS[\'repo\'] must be an array');
+			$repoExceptionContext = array('context' => 'repo', 'repoName' => $repoName);
 
-			if (!array_key_exists('active', $repoInfo)
-			|| !array_key_exists('operations', $repoInfo)
-			|| !array_key_exists('repoPath', $repoInfo)
-			|| !array_key_exists('sourceFolder', $repoInfo)
-			|| !array_key_exists('extensions', $repoInfo)
-			|| !array_key_exists('resourceExtractorClass', $repoInfo)
-			|| !array_key_exists('projectSlug', $repoInfo)
-			|| !array_key_exists('iterationSlug', $repoInfo)
-			|| !array_key_exists('options', $repoInfo)
-			|| !array_key_exists('sourceDocName', $repoInfo))
-				throw new Exception("Missing parameter in configuration for repository $repoName. Please refer to conf_sample.php");
+			if (!is_array($repoInfo))
+			throw new RuntimeException('Each entry in $GLOBALS[\'repo\'] must be an array');
+
+			Babelwatch::checkConfigKey('active', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('operations', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('repoPath', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('sourceFolder', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('extensions', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('resourceExtractorClass', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('projectSlug', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('iterationSlug', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('options', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('sourceDocName', $repoInfo, $repoExceptionContext);
 
 			if (!file_exists($repoInfo['repoPath']))
-				throw new Exception('Specified repository path is invalid. No such directory');
+				throw new RuntimeException("Specified repository path ('{$repoInfo['repoPath']}') is invalid. No such directory");
 
 			if (!file_exists($repoInfo['repoPath'] . $repoInfo['sourceFolder']))
-				throw new Exception('Specified asset path is invalid. No such directory');
+				throw new RuntimeException("Specified source folder ('{$repoInfo['sourceFolder']}') is invalid. No such directory");
 		}
 
-		if (!array_key_exists('assetPath', $GLOBALS['conf']))
-			throw new Exception('No asset path found in conf.php. This is where the PO/POT files will be stored');
+		$globalExceptionContext = array('context' => 'global');
 
-		if (!file_exists($GLOBALS['conf']['assetPath']))
-			throw new Exception('Specified asset path is invalid. No such directory');
+		Babelwatch::checkConfigKey('assetPath', $GLOBALS['conf'], $globalExceptionContext);
+		Babelwatch::checkConfigKey('tmsToolkitPath', $GLOBALS['conf'], $globalExceptionContext);
+		Babelwatch::checkConfigKey('pophpPath', $GLOBALS['conf'], $globalExceptionContext);
+		Babelwatch::checkConfigKey('hgrcPath', $GLOBALS['conf'], $globalExceptionContext);
+	}
 
-		if (!array_key_exists('tmsToolkitPath', $GLOBALS['conf']))
-			throw new Exception('No path to TMS toolkit found in conf.php.');
+	/**
+	 * Look for a specific key in the given array,
+	 * then check whether the value of that key
+	 * is a valid file path (i.e. existing file or folder).
+	 *
+	 * This is used for the configuration check.
+	 *
+	 * @param string $key The key
+	 * @param array $parentArray The array to check
+	 * @param array $exceptionContext Context information
+	 * @param boolean $isPath Whether the value is a path or not
+	 *
+	 * @throws RuntimeException|LogicException
+	 */
+	private static function checkConfigKey($key, $parentArray, $exceptionContext, $isPath = false)
+	{
+		if (!array_key_exists($key, $parentArray))
+		{
+			if (!array_key_exists('context', $exceptionContext))
+				throw new LogicException("Missing exception context when looking for '$key'");
 
-		if (!file_exists($GLOBALS['conf']['tmsToolkitPath']))
-			throw new Exception('Specified TMS toolkit path is invalid. No such directory');
-
-		if (!array_key_exists('pophpPath', $GLOBALS['conf']))
-			throw new Exception('No path to pophp found in conf.php');
-
-		if (!file_exists($GLOBALS['conf']['pophpPath']))
-			throw new Exception('Specified pophp path is invalid. No such directory');
+			switch ($exceptionContext['context'])
+			{
+				case 'repo':
+					if (!array_key_exists('repoName', $exceptionContext))
+						throw new LogicException("Missing repository name in context array when looking for '$key'");
+					throw new RuntimeException("Missing parameter '$key' in conf.php for repository '{$exceptionContext['repoName']}'. Please refer to conf_sample.php");
+				case 'mysql':
+					throw new RuntimeException("Missing MySQL parameter '$key' in conf.php. Please refer to conf_sample.php");
+				case 'global':
+					throw new RuntimeException("No '$key' path found in conf.php");
+			}
+		}
+		else
+		{
+			if ($isPath && !file_exists($parentArray[$key]))
+				throw new RuntimeException("Specified '$key' path ('{$parentArray[$key]}') is invalid. No such directory");
+		}
 	}
 
 	/**
@@ -726,6 +756,19 @@ class Babelwatch
 		return $logs;
 	}
 
+	/**
+	 * Check whether a string already exists in an array
+	 * that has the following structure:
+	 *
+	 * id > stringArray > content
+	 * 									> other fields...
+	 *
+	 * @param string $string The string we're looking for
+	 * @param $array
+	 *
+	 * @return miwed The id of the stringArray if it
+	 * exists, False otherwise.
+	 */
 	private function doesStringExist($string, $array)
 	{
 		foreach ($array as $id => $stringArray)
@@ -946,7 +989,7 @@ class Babelwatch
 		 * a tag
 		 */
 		chdir($this->repoPath);
-		$hash = trim(shell_exec('hg log --debug -r \'' . escapeshellcmd($revision) . '\' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
+		$hash = trim(shell_exec('hg log --debug -r ' . escapeshellcmd($revision) . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
 
 		if (empty($hash))
 			throw new RuntimeException("Revision '$revision' could not be found in the repository '{$this->repoName}'");
@@ -965,5 +1008,25 @@ class Babelwatch
 	private function hasToPerform($operation)
 	{
 		return (($this->operations & $operation) === $operation);
+	}
+
+	public function getLatestTag()
+	{
+		chdir($this->repoPath);
+
+		return trim(shell_exec('hg log -r tip --template "{latesttag}"'));
+	}
+
+	/**
+	 * Pull all changesets from a distant repo
+	 *
+	 * @param string $url The distant repo's URL
+	 */
+	public function pullFromUrl($url)
+	{
+		// Set username/password to get through HTTP authentification
+		putenv('HGRCPATH=' . $GLOBALS['conf']['hgrcPath']);
+		// Don't forget to sanitize
+		shell_exec('hg pull '. escapeshellcmd($url));
 	}
 }

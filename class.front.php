@@ -87,7 +87,7 @@ STYLE;
 
 			$body .= <<<REPO
 				<div class=$formattedRepoName>
-				<h1>$repoName (<a href="diff.php?repo=$repoName">Diff</a>)</h1><br>
+				<h1>$repoName</h1><br>
 REPO;
 
 			foreach ($repoData['changesets'] as $changeset => $changesetData)
@@ -120,9 +120,12 @@ REPO;
 	 *
 	 * action is either 'a' ('added') or 'r' ('removed')
 	 *
+	 * @param boolean $needButtons Whether to display buttons next
+	 * to each string
+	 *
 	 * @return string
 	 */
-	public function displayStringTable($stringTable)
+	public function displayStringTable($stringTable, $needButtons = true)
 	{
 		$out = <<<BIGTABLE
 				<table class=big_table>
@@ -146,12 +149,14 @@ TABLE;
 				$urlButton = array_key_exists('url', $entry) ? $this->displayUrl($entry['url']) : '';
 				$rowClass = ($action === 'a') ? 'addedRow' : 'removedRow';
 
+				$buttons = ($needButtons) ? "{$references['button']} $urlButton" : '';
+
 				$out .= <<<ROW
 					<tr>
 					<td class=$rowClass>
 						<table>
 							<tr>
-							<td>{$references['button']}<br>$urlButton</td>
+							<td>$buttons</td>
 							<td><pre>{$entry['content']}</pre>{$references['content']}</td>
 							</tr>
 						</table>

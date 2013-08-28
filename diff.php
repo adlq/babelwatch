@@ -9,17 +9,44 @@ $front = new Front();
 
 $front->echoHeader();
 
-// Choose the repo via the GET parameter
-if (!isset($_GET['repo']))
-	return;
+// Check conf.php
+try
+{
+	Babelwatch::checkConfig();
+}
+catch (Exception $e)
+{
+	$front->displayException($e);
+	exit();
+}
 
-$repoName = $_GET['repo'];
+// The URL of the changesets to pull from if needed
+$repoUrl= isset($_GET['repoUrl']) ? $_GET['repoUrl'] : 'http://hg.epistema.com/elms_2013_v1_maintenance/';
+
+// We will work on a special repo
+$repoName = 'ckls.diff'; // NAME OF THE DIFF REPO, MAY CHANGE
 $repoInfo = $GLOBALS['conf']['repo'][$repoName];
 $blacklist = (array_key_exists('blacklist', $repoInfo)) ? $repoInfo['blacklist'] : array();
 
-$start = '';
-$end = '';
+// Check to see if there's a lock on the repo
+chdir($repoInfo['repoPath']);
+$lockName = 'babellock';
+try
+{
+	// If the lock exists, ABORT
+	if (file_exists($lockName))
+		throw new RuntimeException("A lock has been set on the current repository (at '{$repoInfo['repoPath']}'). Please try again later");
 
+	// Otherwise, create the lock
+	file_put_contents($lockName, gethostname());
+}
+catch (Exception $e)
+{
+	$front->displayException($e);
+	exit();
+}
+
+// Initialize resource extractor
 $resUpdater = new $repoInfo['resourceExtractorClass'](
 	$repoName,
 	$repoInfo['repoPath'],
@@ -31,22 +58,26 @@ $resUpdater = new $repoInfo['resourceExtractorClass'](
 	$repoInfo['options']);
 
 // Initialize tracker
-$tracker = new Babelwatch(
-	$repoName,
-	$repoInfo['repoPath'],
-	$GLOBALS['conf']['assetPath'],
-	$GLOBALS['conf']['tmsToolkitPath'],
-	$GLOBALS['conf']['pophpPath'],
-	$GLOBALS['conf']['mysql'],
-	$resUpdater,
-	$repoInfo['operations']);
+	$tracker = new Babelwatch(
+		$repoName,
+		$repoInfo['repoPath'],
+		$GLOBALS['conf']['assetPath'],
+		$GLOBALS['conf']['tmsToolkitPath'],
+		$GLOBALS['conf']['pophpPath'],
+		$GLOBALS['conf']['mysql'],
+		$resUpdater,
+		$repoInfo['operations']);
 
 $diffTable = '';
 
 if (isset($_GET['start']) && isset($_GET['end']))
 {
+
 	$start = $_GET['start'];
 	$end = $_GET['end'];
+
+	// Pull the latest changesets from the URL
+	$tracker->pullFromUrl($repoUrl);
 
 	// Retrieve the id of the revisions (full hash format)
 	try
@@ -63,63 +94,70 @@ if (isset($_GET['start']) && isset($_GET['end']))
 	{
 		$tmsToolkit = $tracker->getTmsToolkit();
 
-		if ($tracker->isRevisionInDb($startRevisionFullId) &&	$tracker->isRevisionInDb($endRevisionFullId))
+		// Else if one of the revisions is not in the db,
+		// Rebuild POT for both revisions and compare them
+		$startPot = $tracker->getPotAtRevision($startRevisionFullId);
+		$endPot = $tracker->getPotAtRevision($endRevisionFullId);
+
+		require_once($GLOBALS['conf']['pophpPath'] . 'POUtils.php');
+		$utils = new POUtils();
+
+		$diffInfo = $utils->compare($startPot, $endPot);
+
+		$stringTable = array('a' => array(), 'r' => array());
+
+		// Process added strings
+		foreach ($diffInfo['secondOnly'] as $entry)
 		{
-			// If both revisions exist in the db
-			// we only need to rebuild the POT file
-			// for the starting revision
-			$diffInfo = $tracker->diffBetweenRevisions($startRevisionFullId, $endRevisionFullId);
+			$string = $entry->getSource();
+			$ref = $entry->getReferences($repoInfo['sourceFolder']);
+			$url = $tmsToolkit->getTextflowWebTransUrl($string, 'fr-FR', 'fr', $repoInfo['sourceDocName']);
 
-			$diffTable = $front->displayStringTable($diffInfo);
+			// Update $data
+			array_push($stringTable['a'], array('content' => htmlentities($string), 'url' => $url, 'references' => $ref));
 		}
-		else
+
+		foreach ($diffInfo['firstOnly'] as $entry)
 		{
-			// Else if one of the revisions is not in the db,
-			// Rebuild POT for both revisions and compare them
-			$startPot = $tracker->getPotAtRevision($startRevisionFullId);
-			$endPot = $tracker->getPotAtRevision($endRevisionFullId);
+			$string = $entry->getSource();
+			$ref = $entry->getReferences($repoInfo['sourceFolder']);
 
-			require_once($GLOBALS['conf']['pophpPath'] . 'POUtils.php');
-			$utils = new POUtils();
-
-			$diffInfo = $utils->compare($startPot, $endPot);
-
-			$stringTable = array('a' => array(), 'r' => array());
-
-			// Process added strings
-			foreach ($diffInfo['secondOnly'] as $entry)
-			{
-				$string = $entry->getSource();
-				$ref = $entry->getReferences($repoInfo['sourceFolder']);
-				$url = $tmsToolkit->getTextflowWebTransUrl($string, 'fr-FR', 'fr', $repoInfo['sourceDocName']);
-
-				// Update $data
-				array_push($stringTable['a'], array('content' => htmlentities($string), 'url' => $url, 'references' => $ref));
-			}
-
-			foreach ($diffInfo['firstOnly'] as $entry)
-			{
-				$string = $entry->getSource();
-				$ref = $entry->getReferences($repoInfo['sourceFolder']);
-
-				array_push($stringTable['r'], array('content' => htmlentities($string), 'references' => $ref));
-			}
-			$diffTable = $front->displayStringTable($stringTable);
+			array_push($stringTable['r'], array('content' => htmlentities($string), 'references' => $ref));
 		}
+		$diffTable = $front->displayStringTable($stringTable, false);
 	}
 }
-
+else
+{
+	// Get latest tag to affect to start
+	$start = $tracker->getLatestTag();
+	$end = 'tip';
+}
 
 echo <<<HTML
 <form action="" method=get>
 	<label class=form_label>Start revision: </label>
 	<input type=text name=start value=$start>
+
 	<label class=form_label>End revision: </label>
 	<input type=text name=end value=$end>
-	<input type=hidden name=repo value=$repoName>
+	<br>
+	<label class=form_label>Repository URL: </label>
+	<input type=text name=repoUrl size=70 value=$repoUrl>
+
 	<input type=submit value=Go>
 </form>
 
 $diffTable
 HTML;
 $front->echoFooter();
+
+// Delete the lock
+try
+{
+	unlink($lockName);
+}
+catch (Exception $e)
+{
+	$front->displayException($e);
+}

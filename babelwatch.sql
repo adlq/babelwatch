@@ -3,7 +3,7 @@
 -- Server version:               5.5.24 - MySQL Community Server (GPL)
 -- Server OS:                    Win32
 -- HeidiSQL version:             6.0.0.3991
--- Date/time:                    2013-08-26 10:54:15
+-- Date/time:                    2013-08-28 11:46:21
 -- --------------------------------------------------------
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS `bw_repo` (
 -- Dumping structure for table babelwatch.bw_string
 CREATE TABLE IF NOT EXISTS `bw_string` (
   `id` int(10) NOT NULL AUTO_INCREMENT,
-  `content` text CHARACTER SET utf8,
+  `content` text COLLATE utf8_bin,
   `hash` varchar(64) COLLATE utf8_bin DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `hash` (`hash`)
@@ -95,8 +95,8 @@ CREATE TABLE IF NOT EXISTS `bw_string_ref` (
   UNIQUE KEY `string_id_ref_id` (`string_id`,`ref_id`),
   KEY `FK__bw_string` (`string_id`),
   KEY `FK__bw_reference` (`ref_id`),
-  CONSTRAINT `FK__bw_string` FOREIGN KEY (`string_id`) REFERENCES `bw_string` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `FK__bw_reference` FOREIGN KEY (`ref_id`) REFERENCES `bw_reference` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  CONSTRAINT `FK__bw_reference` FOREIGN KEY (`ref_id`) REFERENCES `bw_reference` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `FK__bw_string` FOREIGN KEY (`string_id`) REFERENCES `bw_string` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin;
 
 -- Data exporting was unselected.

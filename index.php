@@ -7,6 +7,16 @@ $front = new Front();
 
 $front->echoHeader();
 
+try
+{
+	Babelwatch::checkConfig();
+}
+catch (Exception $e)
+{
+	$front->displayException($e);
+	exit();
+}
+
 // Data to be sent to the front
 $data = array();
 
