@@ -243,7 +243,7 @@ class Babelwatch
 	}
 
 	/**
-	 * Given 2 revision local ids, compute the right subset
+	 * Given 2 revision ids, compute the right subset
 	 * of revisions in between to watch over. The parameters
 	 * do not need to be ordered.
 	 *
@@ -291,7 +291,7 @@ class Babelwatch
 	}
 
 	/**
-	 * Given 2 local revision ids, compute the oldest
+	 * Given 2 revision ids, compute the oldest
 	 * and the newest revisions.
 	 *
 	 * @param string $rev1 First revision (any format)
@@ -406,6 +406,12 @@ class Babelwatch
 		$this->tmsToolkit = new ZanataPHPToolkit($user, $apiKey, $projectSlug, $iterationSlug, $zanataUrl, false);
 	}
 
+	/**
+	 * Return the TMS toolkit associated to this
+	 * object. Create it if necessary.
+	 *
+	 * @return mixed
+	 */
 	public function getTmsToolkit()
 	{
 		if (!isset($this->tmsToolkit))
@@ -420,6 +426,7 @@ class Babelwatch
 	 *	- Create a row in bw_repo for the repo if it doesn't exist
 	 *	- Create a row in bw_changeset for the changeset if it doesn't exist
 	 *  - Update information about strings (content, references, added/removed)
+	 *
 	 *  @param array $diffStrings The diff array of strings
 	 */
 	public function updateTracking($diffStrings)
@@ -729,7 +736,8 @@ class Babelwatch
 			$line = $row['line'];
 
 			// We don't use the mysql CONCAT function because
-			// there is a limit in size
+			// there is a limit in the result size. And references
+			// can be numerous...
 			$reference = "$filepath:$line";
 
 
