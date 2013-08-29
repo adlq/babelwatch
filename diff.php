@@ -1,4 +1,5 @@
 <?php
+ignore_user_abort(true);
 set_time_limit(0);
 require_once('conf.php');
 require_once('class.babelwatch.php');
