@@ -222,12 +222,20 @@ class Babelwatch
 			$potFiles = $this->resourceExtractor->getGettextFilesPath();
 
 			if ($this->hasToPerform(UPDATE_POT))
-				$potFiles = $this->resourceExtractor->buildGettextFiles($potFiles['new'], true, true);
+			{
+				try
+				{
+					$potFiles = $this->resourceExtractor->buildGettextFiles($potFiles['new'], true, true);
+				}
+				catch (RuntimeException $e)
+				{
+					die($e->getMessage());
+				}
+			}
 
 			// Only update the TMS and the tracking if there were new or removed strings
 			$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
 			$proceed = !empty($diffStrings['added']) || !empty($diffStrings['removed']);
-
 
 			if ($proceed)
 			{
@@ -353,7 +361,14 @@ class Babelwatch
 		exec("hg update --clean --rev $rev");
 
 		$potFiles = $this->resourceExtractor->getGettextFilesPath();
-		$this->resourceExtractor->buildGettextFiles($potFiles['new'], true, true);
+		try
+		{
+			$this->resourceExtractor->buildGettextFiles($potFiles['new'], true, true);
+		}
+		catch (RuntimeException $e)
+		{
+			die($e->getMessage());
+		}
 	}
 
 	/**
@@ -938,7 +953,14 @@ class Babelwatch
 
 		// Rebuild POT file
 		$potName = $this->assetPath . 'pot' . DIRECTORY_SEPARATOR . $rev . ".pot";
-		$potfile = $this->resourceExtractor->buildGettextFiles($potName, false, false);
+		try
+		{
+			$potfile = $this->resourceExtractor->buildGettextFiles($potName, false, false);
+		}
+		catch (RuntimeException $e)
+		{
+			die($e->getMessage());
+		}
 
 		// Re-update to previous revision
 		exec("hg update --clean --rev $oldRev");

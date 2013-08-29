@@ -116,6 +116,22 @@ class StandardResourceExtractor
 	 */
 	public function buildGettextFromAllStrings($output, $keepPreviousFile, $verbose)
 	{
+		// Lock the directory
+		$cwd = getcwd();
+		chdir($this->potPath);
+		// Check to see if there's a lock
+		$lockName = $this->repoName . "_lock";
+
+		// If the lock exists, ABORT
+		if (file_exists($lockName))
+			throw new RuntimeException("Another process is building POT files. Please try again later.");
+
+		// Otherwise, create the lock
+		file_put_contents($lockName, gethostname());
+
+		// Return to the current working dir
+		chdir($cwd);
+
 		if ($verbose)
 			echo "===\nUpdating po files for {$this->repoName}...\n";
 
@@ -212,6 +228,15 @@ class StandardResourceExtractor
 
 		if ($verbose)
 			echo "===\n";
+
+		// Remove the lock
+		$cwd = getcwd();
+		chdir($this->potPath);
+		// Try to remove the lock
+		if (file_exists($lockName))
+			unlink($lockName);
+		// Return to the current working dir
+		chdir($cwd);
 
 		if ($keepPreviousFile)
 			return array('old' => $this->oldPotFileName, 'new' => $this->potFileName);
