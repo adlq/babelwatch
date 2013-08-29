@@ -1021,12 +1021,17 @@ class Babelwatch
 	 * Pull all changesets from a distant repo
 	 *
 	 * @param string $url The distant repo's URL
+	 *
+	 * @throws RuntimeException
 	 */
 	public function pullFromUrl($url)
 	{
 		// Set username/password to get through HTTP authentification
 		putenv('HGRCPATH=' . $GLOBALS['conf']['hgrcPath']);
 		// Don't forget to sanitize
-		shell_exec('hg pull '. escapeshellcmd($url));
+		exec('hg pull '. escapeshellcmd($url), $output, $result);
+
+		if ($result !== 0)
+			throw new RuntimeException("No valid hg repository can be found at '$url''");
 	}
 }

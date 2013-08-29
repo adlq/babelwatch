@@ -71,27 +71,29 @@ $resUpdater = new $repoInfo['resourceExtractorClass'](
 
 $diffTable = '';
 
-if (isset($_GET['start']) && isset($_GET['end']))
+if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']))
 {
 
 	$start = $_GET['start'];
 	$end = $_GET['end'];
+	$repoUrl = $_GET['repoUrl'];
+	$proceed = true;
 
-	// Pull the latest changesets from the URL
-	$tracker->pullFromUrl($repoUrl);
-
-	// Retrieve the id of the revisions (full hash format)
 	try
 	{
+		// Pull the latest changesets from the URL
+		$tracker->pullFromUrl($repoUrl);
+		// Retrieve the id of the revisions (full hash format)
 		$startRevisionFullId = $tracker->getFullRevisionId($start);
 		$endRevisionFullId = $tracker->getFullRevisionId($end);
 	}
 	catch (RuntimeException $e)
 	{
 		$front->displayException($e);
+		$proceed = false; // Don't do anything else
 	}
 
-	if (!empty($startRevisionFullId) && !empty($endRevisionFullId))
+	if (!empty($startRevisionFullId) && !empty($endRevisionFullId) && $proceed)
 	{
 		$tmsToolkit = $tracker->getTmsToolkit();
 
