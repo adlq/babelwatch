@@ -97,7 +97,7 @@ class Babelwatch
 			Babelwatch::checkConfigKey('resourceExtractorClass', $repoInfo, $repoExceptionContext);
 			Babelwatch::checkConfigKey('projectSlug', $repoInfo, $repoExceptionContext);
 			Babelwatch::checkConfigKey('iterationSlug', $repoInfo, $repoExceptionContext);
-			Babelwatch::checkConfigKey('options', $repoInfo, $repoExceptionContext);
+			Babelwatch::checkConfigKey('blacklist', $repoInfo, $repoExceptionContext);
 			Babelwatch::checkConfigKey('sourceDocName', $repoInfo, $repoExceptionContext);
 
 			if (!file_exists($repoInfo['repoPath']))

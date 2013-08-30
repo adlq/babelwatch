@@ -23,8 +23,7 @@ if (array_key_exists($repoName, $GLOBALS['conf']['repo']))
 			$repoInfo['extensions'],
 			$GLOBALS['conf']['assetPath'],
 			$GLOBALS['conf']['pophpPath'],
-			$blacklist,
-			$repoInfo['options']);
+			$blacklist);
 
 		$tracker = new Babelwatch(
 			$repoName,

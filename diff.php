@@ -55,19 +55,18 @@ $resUpdater = new $repoInfo['resourceExtractorClass'](
 	$repoInfo['extensions'],
 	$GLOBALS['conf']['assetPath'],
 	$GLOBALS['conf']['pophpPath'],
-	$blacklist,
-	$repoInfo['options']);
+	$blacklist);
 
 // Initialize tracker
-	$tracker = new Babelwatch(
-		$repoName,
-		$repoInfo['repoPath'],
-		$GLOBALS['conf']['assetPath'],
-		$GLOBALS['conf']['tmsToolkitPath'],
-		$GLOBALS['conf']['pophpPath'],
-		$GLOBALS['conf']['mysql'],
-		$resUpdater,
-		$repoInfo['operations']);
+$tracker = new Babelwatch(
+	$repoName,
+	$repoInfo['repoPath'],
+	$GLOBALS['conf']['assetPath'],
+	$GLOBALS['conf']['tmsToolkitPath'],
+	$GLOBALS['conf']['pophpPath'],
+	$GLOBALS['conf']['mysql'],
+	$resUpdater,
+	$repoInfo['operations']);
 
 $diffTable = '';
 

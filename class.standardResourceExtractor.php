@@ -10,7 +10,6 @@ class StandardResourceExtractor
 	private $pophpPath;
 
 	private $poUtils;
-	private $options;
 
 	private $fileLists;
 	private $potPath;
@@ -41,8 +40,7 @@ class StandardResourceExtractor
 		$extensions,
 		$assetPath,
 		$pophpPath,
-		$blacklist = array(),
-		$options = array())
+		$blacklist = array())
 	{
 		$this->repoName = $repoName;
 		$this->repoPath = $repoPath;
@@ -54,7 +52,6 @@ class StandardResourceExtractor
 
 		require_once($this->pophpPath . 'POUtils.php');
 		$this->poUtils = new POUtils();
-		$this->options = $options;
 
 		/**
 		 * Directory containing .pot files
