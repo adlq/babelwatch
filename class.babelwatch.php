@@ -294,7 +294,7 @@ class Babelwatch
 		$revisions = array();
 		while ($lastRevision != $start)
 		{
-			if ($this->getLocalRevisionId($lastRevision) < $this->getLocalRevisionId(start))
+			if ($this->getLocalRevisionId($lastRevision) < $this->getLocalRevisionId($start))
 				throw new RuntimeException("Revision $start does not belong to the same branch as revision $end");
 
 			array_push($revisions, $lastRevision);
