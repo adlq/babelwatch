@@ -203,7 +203,14 @@ class Babelwatch
 		chdir($this->repoPath);
 
 		// Retrieve the right revisions
-		$revisions = $this->getRightRevisions($rev1, $rev2);
+		try
+		{
+			$revisions = $this->getRightRevisions($rev1, $rev2);
+		}
+		catch (RuntimeException $e)
+		{
+			die ($e->getMessage());
+		}
 
 		// If we have processed all of the revisions, do nothing
 		if (count($revisions) <= 1)
@@ -261,6 +268,8 @@ class Babelwatch
 	 * @param string $rev1 The first revision (any format)
 	 * @param string $rev2 The second revision (any format)
 	 * @return array<int> An array of the revisions (full hash format)
+	 *
+	 * @throws RuntimeException
 	 */
 	public function getRightRevisions($rev1, $rev2)
 	{
@@ -269,7 +278,7 @@ class Babelwatch
 		// The revisions can be specified in any format.
 		// They are then converted to their full hash via
 		// the sortRevisionsByDate method
-		$sortedRevisions = $this->sortRevisionsByDate($rev1, $rev2);
+		$sortedRevisions = $this->sortRevisionsByLocalId($rev1, $rev2);
 		$start = $sortedRevisions['oldest'];
 		$end = $sortedRevisions['newest'];
 
@@ -285,6 +294,9 @@ class Babelwatch
 		$revisions = array();
 		while ($lastRevision != $start)
 		{
+			if ($this->getLocalRevisionId($lastRevision) < $this->getLocalRevisionId(start))
+				throw new RuntimeException("Revision $start does not belong to the same branch as revision $end");
+
 			array_push($revisions, $lastRevision);
 			// The '~n' sign specifies that we want the nth first ancestor of the $end revision
 			$lastRevision = trim(shell_exec('hg log --debug -r ' . $end . '~' . $n . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
@@ -300,7 +312,8 @@ class Babelwatch
 
 	/**
 	 * Given 2 revision ids, compute the oldest
-	 * and the newest revisions.
+	 * and the newest revisions, with respect to
+	 * local ids.
 	 *
 	 * @param string $rev1 First revision (any format)
 	 * @param string $rev2 Second revision (any format)
@@ -308,7 +321,7 @@ class Babelwatch
 	 * @return array An associative array with 'oldest' and 'newest' keys
 	 * with the full hash ids of the revisions
 	 */
-	private function sortRevisionsByDate($rev1, $rev2)
+	private function sortRevisionsByLocalId($rev1, $rev2)
 	{
 		chdir($this->repoPath);
 
@@ -327,22 +340,22 @@ class Babelwatch
 		/**
 		 * Sort the revisions by date
 		 */
-		// Retrieve the dates and automatically sort the revisions
-		$revInfo = shell_exec('hg log -r ' . $rev1 . ' -r ' . $rev2 . ' | grep -G "^date" | sed "s/^date:[[:space:]]*//g"');
+		// Retrieve the local ids and automatically sort the revisions
+		$revInfo = shell_exec('hg log -r ' . $rev1 . ' -r ' . $rev2 . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"');
 
-		// Retrieve the two dates
+		// Retrieve the two local ids
 		$lines = explode("\n", $revInfo);
 
 		// Remove the empty element
 		array_pop($lines);
 
-		// Create a new date array from the lines array
-		$dates = array($rev1 => strtotime($lines[0]), $rev2 => strtotime($lines[1]));
+		// Create a new ids array from the lines array
+		$localIds = array($rev1 => $lines[0], $rev2 => $lines[1]);
 
 		// After the sort, the oldest revision is the
 		// first element and the newest the second
-		asort($dates, SORT_NUMERIC);
-		$extrema = array_keys($dates);
+		asort($localIds, SORT_NUMERIC);
+		$extrema = array_keys($localIds);
 		$start = $extrema[0];
 		$end = $extrema[1];
 
@@ -1020,6 +1033,32 @@ class Babelwatch
 		 */
 		chdir($this->repoPath);
 		$hash = trim(shell_exec('hg log --debug -r ' . escapeshellcmd($revision) . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
+
+		if (empty($hash))
+			throw new RuntimeException("Revision '$revision' could not be found in the repository '{$this->repoName}'");
+
+		return $hash;
+	}
+
+	/**
+	 * Return the local id of the given
+	 * revision.
+	 *
+	 * @param string $revision The revision (any format)
+	 *
+	 * @return string
+	 * @throws Exception
+	 */
+	public function getLocalRevisionId($revision)
+	{
+		/**
+		 * The $revision parameter can be:
+		 * a local id
+		 * a full hash id (in which case nothing is to be done)
+		 * a tag
+		 */
+		chdir($this->repoPath);
+		$hash = trim(shell_exec('hg log --debug -r ' . escapeshellcmd($revision) . ' | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/:.*//g"'));
 
 		if (empty($hash))
 			throw new RuntimeException("Revision '$revision' could not be found in the repository '{$this->repoName}'");
