@@ -238,18 +238,19 @@ class Babelwatch
 				{
 					die($e->getMessage());
 				}
-			}
 
-			// Only update the TMS and the tracking if there were new or removed strings
-			$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
-			$proceed = !empty($diffStrings['added']) || !empty($diffStrings['removed']);
+				// Only update the TMS and the tracking if there were new or removed strings
+				$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
+				$proceed = !empty($diffStrings['added']) || !empty($diffStrings['removed']);
 
-			if ($proceed)
-			{
-				if ($this->hasToPerform(UPDATE_TMS))
-					$this->updateTMS($potFiles['new']);
+				if ($proceed)
+				{
+					if ($this->hasToPerform(UPDATE_TMS))
+						$this->updateTMS($potFiles['new']);
 
-				$this->updateTracking($diffStrings);
+					if ($this->hasToPerform(UPDATE_TRACKING))
+					$this->updateTracking($diffStrings);
+				}
 			}
 		}
 
