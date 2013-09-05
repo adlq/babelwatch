@@ -454,8 +454,15 @@ EMAIL;
 			$this->createTmsToolkit();
 
 		// Update the source entries on Zanata!
-		$this->tmsToolkit->pushPotEntries($newPot, $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName'], 'en-GB');
-		echo "===\n";
+		$result = $this->tmsToolkit->pushPotEntries($newPot, $GLOBALS['conf']['repo'][$this->repoName]['sourceDocName'], 'en-GB');
+
+		// Notify the result to the user
+		if ($result === true)
+			echo "Failed to update TMS\n";
+		else
+			echo "TMS successfully updated\n";
+
+		echo "\n===\n";
 	}
 
 
