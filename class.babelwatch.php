@@ -305,9 +305,14 @@ class Babelwatch
 Bonjour,
 
 A la révision $revision,
+
 $newStringText
 
 $removedStringText
+
+Bien cordialement,
+
+L'équipe "Localisation"
 EMAIL;
 
 		return $text;
