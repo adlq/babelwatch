@@ -113,6 +113,7 @@ class Babelwatch
 		Babelwatch::checkConfigKey('tmsToolkitPath', $GLOBALS['conf'], $globalExceptionContext);
 		Babelwatch::checkConfigKey('pophpPath', $GLOBALS['conf'], $globalExceptionContext);
 		Babelwatch::checkConfigKey('hgrcPath', $GLOBALS['conf'], $globalExceptionContext);
+		Babelwatch::checkConfigKey('mailTo', $GLOBALS['conf'], $globalExceptionContext);
 	}
 
 	/**
@@ -243,8 +244,12 @@ class Babelwatch
 				$diffStrings = $this->comparePots($potFiles['old'], $potFiles['new']);
 				$proceed = !empty($diffStrings['added']) || !empty($diffStrings['removed']);
 
+				// The strings have changed!
 				if ($proceed)
 				{
+					// Send mail to the teams
+					$this->composeStringMail($rev, $diffStrings);
+
 					if ($this->hasToPerform(UPDATE_TMS))
 						$this->updateTMS($potFiles['new']);
 
@@ -256,6 +261,57 @@ class Babelwatch
 
 		echo "\nWORK ON " . strtoupper($this->repoName) . " DONE\n";
 		return;
+	}
+
+	/**
+	 * Send an update mail to the right people
+	 *
+	 * @param array $diffStrings An array containing new and removed strings
+	 * @param unknown_type $revision The revision full hash id
+	 */
+	private function composeStringMail($revision, $diffStrings)
+	{
+		$stringMailBody = $this->generateStringMailMessage($revision, $diffStrings);
+		$mailSent = mail($GLOBALS['conf']['mailTo'], 'Des chaînes ont changé !', $stringMailBody, "From:localisation@svrtest10.epistema.local \r\n");
+	}
+
+	/**
+	 * Generate the body of the string update email
+	 *
+	 * @param array $diffStrings An array containing new and removed strings
+	 * @param unknown_type $revision The revision full hash id
+	 */
+	private function generateStringMailMessage($revision, $diffStrings)
+	{
+		$addedStringText = '';
+		$removedStringText = '';
+
+		$newCount = count($diffStrings['added']);
+		$removedCount = count($diffStrings['removed']);
+
+		foreach ($diffStrings['added'] as $newString)
+		{
+			$addedStringText .= "\t - {$newString->getSource()}\r\n";
+		}
+
+		foreach ($diffStrings['removed'] as $removedString)
+		{
+			$removedStringText .= "\t - {$removedString->getSource()}\r\n";
+		}
+
+		$text = <<<EMAIL
+		Bonjour,
+
+		A la révision $revision,
+		$newCount chaîne(s) ont été ajoutée(s) :
+		$addedStringText
+
+		$removedCount chaîne(s) ont été supprimée(s) :
+		$removedStringText
+
+EMAIL;
+
+		return $text;
 	}
 
 	/**
