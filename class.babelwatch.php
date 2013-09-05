@@ -274,7 +274,7 @@ class Babelwatch
 	private function composeStringMail($revision, $diffStrings)
 	{
 		$stringMailBody = $this->generateStringMailMessage($revision, $diffStrings);
-		$mailSent = mail($GLOBALS['conf']['mailTo'], 'Des chaînes ont changé !', $stringMailBody, "From:localisation@svrtest10.epistema.local \r\n");
+		$mailSent = mail($GLOBALS['conf']['mailTo'], 'Des chaînes ont changé !', $stringMailBody, "From:Localisation@crossknowledge.com \r\n");
 	}
 
 	/**
