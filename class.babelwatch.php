@@ -114,6 +114,7 @@ class Babelwatch
 		Babelwatch::checkConfigKey('pophpPath', $GLOBALS['conf'], $globalExceptionContext);
 		Babelwatch::checkConfigKey('hgrcPath', $GLOBALS['conf'], $globalExceptionContext);
 		Babelwatch::checkConfigKey('mailTo', $GLOBALS['conf'], $globalExceptionContext);
+		Babelwatch::checkConfigKey('mailNotifications', $GLOBALS['conf'], $globalExceptionContext);
 	}
 
 	/**
@@ -248,7 +249,8 @@ class Babelwatch
 				if ($proceed)
 				{
 					// Send mail to the teams
-					$this->composeStringMail($rev, $diffStrings);
+					if ($GLOBALS['conf']['mailNotifications'] === true)
+						$this->composeStringMail($rev, $diffStrings);
 
 					if ($this->hasToPerform(UPDATE_TMS))
 						$this->updateTMS($potFiles['new']);
@@ -283,15 +285,15 @@ class Babelwatch
 	 */
 	private function generateStringMailMessage($revision, $diffStrings)
 	{
-		$addedStringText = '';
-		$removedStringText = '';
-
 		$newCount = count($diffStrings['added']);
 		$removedCount = count($diffStrings['removed']);
 
+		$newStringText = ($newCount === 1) ? "Une chaîne a été ajoutée :\r\n" : "$newCount chaînes ont été ajoutées :\r\n";
+		$removedStringText = ($removedCount === 1) ? "Une chaîne a été supprimée :\r\n" : "$removedCount chaînes ont été supprimées :\r\n";
+
 		foreach ($diffStrings['added'] as $newString)
 		{
-			$addedStringText .= "\t - {$newString->getSource()}\r\n";
+			$newStringText .= "\t - {$newString->getSource()}\r\n";
 		}
 
 		foreach ($diffStrings['removed'] as $removedString)
@@ -300,15 +302,12 @@ class Babelwatch
 		}
 
 		$text = <<<EMAIL
-		Bonjour,
+Bonjour,
 
-		A la révision $revision,
-		$newCount chaîne(s) ont été ajoutée(s) :
-		$addedStringText
+A la révision $revision,
+$newStringText
 
-		$removedCount chaîne(s) ont été supprimée(s) :
-		$removedStringText
-
+$removedStringText
 EMAIL;
 
 		return $text;
