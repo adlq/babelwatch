@@ -304,7 +304,7 @@ class Babelwatch
 		$text = <<<EMAIL
 Bonjour,
 
-A la révision $revision,
+A la révision $revision (du dépôt $this->repoName),
 
 $newStringText
 
