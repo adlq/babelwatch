@@ -35,8 +35,6 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 			null,
 			$repoInfo['operations']);
 
-		$tmsToolkit = $tracker->getTmsToolkit();
-
 		// Retrieve log
 		$log = $tracker->log();
 
@@ -56,29 +54,21 @@ foreach ($GLOBALS['conf']['repo'] as $repoName => $repoInfo)
 				$data[$repoName]['changesets'][$changeset]['summary'] = htmlentities($changesetInfo['summary']);
 
 				// Process added strings
-				if (array_key_exists('a', $changesetInfo))
+				foreach ($changesetInfo as $field => $value)
 				{
-					foreach ($changesetInfo['a'] as $stringArray)
+					// If the field contains other information than string actions
+					// ('a' for 'added' and 'r' for 'removed'), ignore it
+					if (!in_array($field, array('a', 'r')))
+						continue;
+
+					// Process added or removed strings
+					foreach ($value as $stringArray)
 					{
 						$string = $stringArray['content'];
 						$refs = $stringArray['references'];
 
-						$url = $tmsToolkit->getTextflowWebTransUrl($string, 'fr-FR', 'fr', $repoInfo['sourceDocName']);
-
 						// Update $data
-						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['a'], array('content' => htmlentities($string), 'url' => $url, 'references' => $refs));
-					}
-				}
-
-				if (array_key_exists('r', $changesetInfo))
-				{
-					foreach ($changesetInfo['r'] as $stringArray)
-					{
-						$string = $stringArray['content'];
-						$ref = $stringArray['references'];
-
-						// Update $data
-						array_push($data[$repoName]['changesets'][$changeset]['stringTable']['r'], array('content' => htmlentities($string), 'references' => $ref));
+						array_push($data[$repoName]['changesets'][$changeset]['stringTable'][$field], array('content' => htmlentities($string), 'references' => $refs));
 					}
 				}
 			}
