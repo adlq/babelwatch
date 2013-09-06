@@ -94,8 +94,6 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']))
 
 	if (!empty($startRevisionFullId) && !empty($endRevisionFullId) && $proceed)
 	{
-		$tmsToolkit = $tracker->getTmsToolkit();
-
 		// Else if one of the revisions is not in the db,
 		// Rebuild POT for both revisions and compare them
 		$startPot = $tracker->getPotAtRevision($startRevisionFullId);
@@ -113,10 +111,9 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']))
 		{
 			$string = $entry->getSource();
 			$ref = $entry->getReferences($repoInfo['sourceFolder']);
-			$url = $tmsToolkit->getTextflowWebTransUrl($string, 'fr-FR', 'fr', $repoInfo['sourceDocName']);
 
 			// Update $data
-			array_push($stringTable['a'], array('content' => htmlentities($string), 'url' => $url, 'references' => $ref));
+			array_push($stringTable['a'], array('content' => htmlentities($string), 'references' => $ref));
 		}
 
 		foreach ($diffInfo['firstOnly'] as $entry)
@@ -126,6 +123,7 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']))
 
 			array_push($stringTable['r'], array('content' => htmlentities($string), 'references' => $ref));
 		}
+
 		$diffTable = $front->displayStringTable($stringTable, false);
 	}
 }
