@@ -291,6 +291,11 @@ class Babelwatch
 		$newStringText = ($newCount === 1) ? "Une chaîne a été ajoutée :\r\n" : "$newCount chaînes ont été ajoutées :\r\n";
 		$removedStringText = ($removedCount === 1) ? "Une chaîne a été supprimée :\r\n" : "$removedCount chaînes ont été supprimées :\r\n";
 
+		if ($newCount === 0)
+			$newStringText = '';
+		if ($removedCount === 0)
+			$removedStringText = '';
+
 		foreach ($diffStrings['added'] as $newString)
 		{
 			$newStringText .= "\t - {$newString->getSource()}\r\n";
