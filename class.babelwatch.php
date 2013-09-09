@@ -291,6 +291,10 @@ class Babelwatch
 		// Retrieve revision info
 		$revInfo = $this->getRevisionInfo($revision);
 
+		require_once(__FILE__ . 'class.front.php');
+		$front = new Front();
+		$revInfo['summary'] = $front->processRevisionSummary($revInfo['summary']);
+
 		$newCount = count($diffStrings['added']);
 		$removedCount = count($diffStrings['removed']);
 
