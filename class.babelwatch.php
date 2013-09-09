@@ -274,7 +274,10 @@ class Babelwatch
 	private function composeStringMail($revision, $diffStrings)
 	{
 		$stringMailBody = $this->generateStringMailMessage($revision, $diffStrings);
-		$mailSent = mail($GLOBALS['conf']['mailTo'], 'Des chaînes ont changé !', $stringMailBody, "From:Localisation@crossknowledge.com \r\n");
+		$headers = "From:Localisation@crossknowledge.com \r\n";
+		$headers .= "MIME-Version: 1.0\r\n";
+		$headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
+		$mailSent = mail($GLOBALS['conf']['mailTo'], 'Des chaînes ont changé !', $stringMailBody, $headers);
 	}
 
 	/**
@@ -291,8 +294,11 @@ class Babelwatch
 		$newCount = count($diffStrings['added']);
 		$removedCount = count($diffStrings['removed']);
 
-		$newStringText = ($newCount === 1) ? "Une chaîne a été ajoutée :\r\n" : "$newCount chaînes ont été ajoutées :\r\n";
-		$removedStringText = ($removedCount === 1) ? "Une chaîne a été supprimée :\r\n" : "$removedCount chaînes ont été supprimées :\r\n";
+		$newStringText = ($newCount === 1) ? "Une chaîne a été ajoutée :" : "$newCount chaînes ont été ajoutées :";
+		$removedStringText = ($removedCount === 1) ? "Une chaîne a été supprimée :" : "$removedCount chaînes ont été supprimées :";
+
+		$newStringText .= "<br><ul>";
+		$removedStringText .= "<br><ul>";
 
 		if ($newCount === 0)
 			$newStringText = '';
@@ -301,28 +307,35 @@ class Babelwatch
 
 		foreach ($diffStrings['added'] as $newString)
 		{
-			$newStringText .= "\t - {$newString->getSource()}\r\n";
+			$newStringText .= "<li>{$newString->getSource()}</li>";
 		}
 
 		foreach ($diffStrings['removed'] as $removedString)
 		{
-			$removedStringText .= "\t - {$removedString->getSource()}\r\n";
+			$removedStringText .= "<li>{$removedString->getSource()}</li>";
 		}
 
+		$newStringText .= "</ul>";
+		$removedStringText .= "</ul>";
+
 		$text = <<<EMAIL
+<html>
+<body>
 Bonjour,
-
-A la révision $revision (soumise par {$revInfo['user']} dans {$revInfo['branch']})
-avec le commentaire :
-{$revInfo['summary']}
-
+<br><br>
+A la révision <i>$revision</i> (soumise par <strong>{$revInfo['user']}</strong> dans <strong>{$revInfo['branch']}</strong>)
+avec le commentaire :<br>
+<strong>{$revInfo['summary']}</strong>
+<br><br>
 $newStringText
-
+<br><br>
 $removedStringText
-
+<br><br>
 Bien cordialement,
-
+<br><br>
 L'équipe "Localisation"
+</body>
+</html>
 EMAIL;
 
 		return $text;
