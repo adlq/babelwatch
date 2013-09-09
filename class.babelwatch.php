@@ -294,8 +294,11 @@ class Babelwatch
 		$newCount = count($diffStrings['added']);
 		$removedCount = count($diffStrings['removed']);
 
-		$newStringText = ($newCount === 1) ? "Une chaîne a été ajoutée :\r\n" : "$newCount chaînes ont été ajoutées :\r\n";
-		$removedStringText = ($removedCount === 1) ? "Une chaîne a été supprimée :\r\n" : "$removedCount chaînes ont été supprimées :\r\n";
+		$newStringText = ($newCount === 1) ? "Une chaîne a été ajoutée :" : "$newCount chaînes ont été ajoutées :";
+		$removedStringText = ($removedCount === 1) ? "Une chaîne a été supprimée :" : "$removedCount chaînes ont été supprimées :";
+
+		$newStringText .= '<br><ul>';
+		$removedStringText .= '<br><ul>';
 
 		if ($newCount === 0)
 			$newStringText = '';
@@ -304,13 +307,16 @@ class Babelwatch
 
 		foreach ($diffStrings['added'] as $newString)
 		{
-			$newStringText .= "\t - {$newString->getSource()}\r\n";
+			$newStringText .= "<li>{$newString->getSource()}";
 		}
 
 		foreach ($diffStrings['removed'] as $removedString)
 		{
-			$removedStringText .= "\t - {$removedString->getSource()}\r\n";
+			$removedStringText .= "<li>{$removedString->getSource()}";
 		}
+
+		$newStringText .= '</ul><br>';
+		$removedStringText .= '</ul><br>';
 
 		$text = <<<EMAIL
 <html>
@@ -319,11 +325,11 @@ Bonjour,
 <br>
 A la révision :
 <br>
-<table>
+<table style="table-layout: fixed; background: #FFF; border: 1px solid black;">
 <tr><td>ID</td><td>$revision</td></tr>
-<tr><td>ID</td><td>{$revInfo['branch']}</td></tr>
-<tr><td>ID</td><td>{$revInfo['user']}</td></tr>
-<tr><td>ID</td><td>{$revInfo['summary']}</td></tr>
+<tr><td>Branch</td><td>{$revInfo['branch']}</td></tr>
+<tr><td>Développeur</td><td>{$revInfo['user']}</td></tr>
+<tr><td>Commentaire</td><td>{$revInfo['summary']}</td></tr>
 </table>
 
 $newStringText
