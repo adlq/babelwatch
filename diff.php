@@ -116,6 +116,7 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']))
 			array_push($stringTable['a'], array('content' => htmlentities($string), 'references' => $ref));
 		}
 
+		// Process removed strings
 		foreach ($diffInfo['firstOnly'] as $entry)
 		{
 			$string = $entry->getSource();

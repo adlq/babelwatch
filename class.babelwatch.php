@@ -285,6 +285,9 @@ class Babelwatch
 	 */
 	private function generateStringMailMessage($revision, $diffStrings)
 	{
+		// Retrieve revision info
+		$revInfo = $this->getRevisionInfo($revision);
+
 		$newCount = count($diffStrings['added']);
 		$removedCount = count($diffStrings['removed']);
 
@@ -307,9 +310,18 @@ class Babelwatch
 		}
 
 		$text = <<<EMAIL
+<html>
+<body>
 Bonjour,
-
-A la révision $revision (du dépôt $this->repoName),
+<br>
+A la révision :
+<br>
+<table>
+<tr><td>ID</td><td>$revision</td></tr>
+<tr><td>ID</td><td>{$revInfo['branch']}</td></tr>
+<tr><td>ID</td><td>{$revInfo['user']}</td></tr>
+<tr><td>ID</td><td>{$revInfo['summary']}</td></tr>
+</table>
 
 $newStringText
 
@@ -318,6 +330,8 @@ $removedStringText
 Bien cordialement,
 
 L'équipe "Localisation"
+</body>
+</html>
 EMAIL;
 
 		return $text;
@@ -538,18 +552,7 @@ EMAIL;
 		chdir($this->repoPath);
 		// Note: the tip designates the last changeset, not the version of the code
 		// The code version is revision '.'
-		$logLines = explode("\n", shell_exec('hg log -r . | tail -n +2'));
-
-		$revInfo = array();
-
-		foreach($logLines as $line)
-		{
-			$matches = array();
-			if (preg_match("/([^:]*):\s+(.+)/", $line, $matches))
-			{
-				$revInfo[$matches[1]] = $matches[2];
-			}
-		}
+		$revInfo = $this->getRevisionInfo('.');
 
 		// Retrieve the full hash id for the revision
 		$revInfo['changeset'] = trim(shell_exec('hg log --debug -r . | grep -G "^changeset" | sed "s/^changeset:[[:space:]]*//g" | sed "s/.*://g"'));
@@ -561,6 +564,30 @@ EMAIL;
 		$this->updateStringState($changesetId, $diffStrings['added'], 'a');
 		$this->updateStringState($changesetId, $diffStrings['removed'], 'r');
 		echo "===\n";
+	}
+
+	/**
+	 * Get revision info (branch, tag, user,
+	 * date, summary) on the given revision.
+	 *
+	 * @param string $rev The revision (any format)
+	 * @return array An associative array with the info field
+	 */
+	public function getRevisionInfo($rev)
+	{
+		$logLines = explode("\n", shell_exec("hg log -r $rev | tail -n +2"));
+
+		$revInfo = array();
+
+		foreach($logLines as $line)
+		{
+			$matches = array();
+			if (preg_match("/([^:]*):\s+(.+)/", $line, $matches))
+			{
+				$revInfo[$matches[1]] = $matches[2];
+			}
+		}
+		return $revInfo;
 	}
 
 	/**
