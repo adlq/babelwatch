@@ -291,7 +291,7 @@ class Babelwatch
 		// Retrieve revision info
 		$revInfo = $this->getRevisionInfo($revision);
 
-		require_once(__FILE__ . 'class.front.php');
+		require_once(__DIR__ . '/class.front.php');
 		$front = new Front();
 		$revInfo['summary'] = $front->processRevisionSummary($revInfo['summary']);
 
