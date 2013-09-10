@@ -273,11 +273,11 @@ class Babelwatch
 	 */
 	private function composeStringMail($revision, $diffStrings)
 	{
-		$stringMailBody = $this->generateStringMailMessage($revision, $diffStrings);
+		$mail = $this->generateStringMailMessage($revision, $diffStrings);
 		$headers = "From:Localisation@crossknowledge.com \r\n";
 		$headers .= "MIME-Version: 1.0\r\n";
 		$headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
-		$mailSent = mail($GLOBALS['conf']['mailTo'], 'Des chaînes ont changé !', $stringMailBody, $headers);
+		$mailSent = mail($GLOBALS['conf']['mailTo'], $mail['subject'], $mail['body'], $headers);
 	}
 
 	/**
@@ -342,7 +342,7 @@ L'équipe "Localisation"
 </html>
 EMAIL;
 
-		return $text;
+		return array('body' => $text, 'subject' => "Mise à jour de chaînes par {$revInfo['user']}");
 	}
 
 	/**
