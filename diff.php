@@ -8,8 +8,6 @@ require_once('class.projectResourceExtractor.php');
 
 $front = new Front();
 
-$front->echoHeader();
-
 // Check conf.php
 try
 {
@@ -28,24 +26,6 @@ $repoUrl= isset($_GET['repoUrl']) ? $_GET['repoUrl'] : 'http://hg.epistema.com/e
 $repoName = 'ckls.diff'; // NAME OF THE DIFF REPO, MAY CHANGE
 $repoInfo = $GLOBALS['conf']['repo'][$repoName];
 $blacklist = (array_key_exists('blacklist', $repoInfo)) ? $repoInfo['blacklist'] : array();
-
-// Check to see if there's a lock on the repo
-chdir($repoInfo['repoPath']);
-$lockName = 'babellock';
-try
-{
-	// If the lock exists, ABORT
-	if (file_exists($lockName))
-		throw new RuntimeException("A lock has been set on the current repository (at '{$repoInfo['repoPath']}'). Please try again later");
-
-	// Otherwise, create the lock
-	file_put_contents($lockName, gethostname());
-}
-catch (Exception $e)
-{
-	$front->displayException($e);
-	exit();
-}
 
 // Initialize resource extractor
 $resUpdater = new $repoInfo['resourceExtractorClass'](
@@ -70,8 +50,76 @@ $tracker = new Babelwatch(
 
 $diffTable = '';
 
-if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']))
+if (isset($_POST['export']))
 {
+	$poFileName = $GLOBALS['conf']['assetPath'] . 'new.strings.po';
+	// The user wants to export the new strings to a PO file
+	require_once($GLOBALS['conf']['pophpPath'] . 'POUtils.php');
+	header("Content-Type: application/octet-stream");
+	header("Content-disposition: attachment; filename=" . pathinfo($poFileName, PATHINFO_BASENAME));
+
+	file_put_contents($poFileName, POUtils::getGettextHeader(), LOCK_EX);
+	$i = 0;
+
+	while (isset($_POST['newStringContent_' . $i]) && isset($_POST['newStringContext_' . $i]))
+	{
+		// Echo out all the hidden form elements as POEntry
+		$entry = new POEntry($_POST['newStringContent_' . $i], '', $_POST['newStringContext_' . $i]);
+		file_put_contents($poFileName, $entry->__toString(), FILE_APPEND | LOCK_EX);
+		$i++;
+	}
+
+	if ($_POST['export'] == 'po')
+	{
+		readfile($poFileName);
+		unlink($poFileName);
+		exit();
+	}
+
+	// Convert to XLF
+	$destLocale = 'fr-FR';
+	$outputXlf = $GLOBALS['conf']['assetPath'] . $destLocale . '.xlf';
+	$tempXlf = $GLOBALS['conf']['assetPath'] . $destLocale . '.temp.xlf';
+	header("Content-disposition: attachment; filename=" . pathinfo($outputXlf, PATHINFO_BASENAME));
+
+	exec("msguniq --no-location --no-wrap --sort-output $poFileName -o $poFileName");
+
+	exec("msgattrib --no-obsolete --no-wrap --no-location --sort-output $poFileName -o $poFileName");
+
+  exec("po2xliff -i $poFileName -o $tempXlf");
+
+	chdir($GLOBALS['conf']['l10nScriptsPath']);
+	exec("php xliff2lb.php $tempXlf en-GB $outputXlf $destLocale");
+
+	unlink($tempXlf);
+	unlink($poFileName);
+	readfile($outputXlf);
+	unlink($outputXlf);
+	exit();
+}
+
+$front->echoHeader();
+
+if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']) && !isset($_POST['export']))
+{
+
+	// Check to see if there's a lock on the repo
+	chdir($repoInfo['repoPath']);
+	$lockName = 'babellock';
+	try
+	{
+		// If the lock exists, ABORT
+		if (file_exists($lockName))
+			throw new RuntimeException("A lock has been set on the current repository (at '{$repoInfo['repoPath']}'). Please try again later");
+
+		// Otherwise, create the lock
+		file_put_contents($lockName, gethostname());
+	}
+	catch (Exception $e)
+	{
+		$front->displayException($e);
+		exit();
+	}
 
 	$start = $_GET['start'];
 	$end = $_GET['end'];
@@ -96,16 +144,27 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']))
 	{
 		// Else if one of the revisions is not in the db,
 		// Rebuild POT for both revisions and compare them
-		$startPot = $tracker->getPotAtRevision($startRevisionFullId);
-		$endPot = $tracker->getPotAtRevision($endRevisionFullId);
+		//$startPot = $tracker->getPotAtRevision($startRevisionFullId);
+		//$endPot = $tracker->getPotAtRevision($endRevisionFullId);
 
 		require_once($GLOBALS['conf']['pophpPath'] . 'POUtils.php');
 		$utils = new POUtils();
 
-		$diffInfo = $utils->compare($startPot, $endPot);
+		//$diffInfo = $utils->compare($startPot, $endPot);
+
+		$diffInfo = array(
+		'secondOnly' => array(
+			new POEntry('Hello World 1', '', 'Context 1'),
+			new POEntry('Hello World 2', '', 'Context 2'),
+			new POEntry('Hello World 3', '', 'Context 3')
+			),
+		'firstOnly' => array()
+		);
 
 		$stringTable = array('a' => array(), 'r' => array());
 
+		$hiddenStringId = 0;
+		echo '<form action="" method="post">';
 		// Process added strings
 		foreach ($diffInfo['secondOnly'] as $entry)
 		{
@@ -114,7 +173,22 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']))
 
 			// Update $data
 			array_push($stringTable['a'], array('content' => htmlentities($string), 'references' => $ref));
+
+			// Prepare to save added strings info in the page
+			echo <<<HTML
+			<input type=hidden name=newStringContent_$hiddenStringId value="{$entry->getSource()}">
+			<input type=hidden name=newStringContext_$hiddenStringId value="{$entry->getContext()}">
+HTML;
+			$hiddenStringId++;
 		}
+		echo <<<HTML
+		<select name=export>
+			<option value=po>PO</option>
+			<option value=xlf>XLF</option>
+		</select>
+		<input type=submit value="Export">
+		</form>
+HTML;
 
 		// Process removed strings
 		foreach ($diffInfo['firstOnly'] as $entry)
@@ -126,6 +200,18 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']))
 		}
 
 		$diffTable = $front->displayStringTable($stringTable, false);
+
+	}
+
+
+	// Delete the lock
+	try
+	{
+		unlink($lockName);
+	}
+	catch (Exception $e)
+	{
+		$front->displayException($e);
 	}
 }
 else
@@ -152,13 +238,3 @@ echo <<<HTML
 $diffTable
 HTML;
 $front->echoFooter();
-
-// Delete the lock
-try
-{
-	unlink($lockName);
-}
-catch (Exception $e)
-{
-	$front->displayException($e);
-}
