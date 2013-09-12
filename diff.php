@@ -144,22 +144,13 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']) && !
 	{
 		// Else if one of the revisions is not in the db,
 		// Rebuild POT for both revisions and compare them
-		//$startPot = $tracker->getPotAtRevision($startRevisionFullId);
-		//$endPot = $tracker->getPotAtRevision($endRevisionFullId);
+		$startPot = $tracker->getPotAtRevision($startRevisionFullId);
+		$endPot = $tracker->getPotAtRevision($endRevisionFullId);
 
 		require_once($GLOBALS['conf']['pophpPath'] . 'POUtils.php');
 		$utils = new POUtils();
 
-		//$diffInfo = $utils->compare($startPot, $endPot);
-
-		$diffInfo = array(
-		'secondOnly' => array(
-			new POEntry('Hello World 1', '', 'Context 1'),
-			new POEntry('Hello World 2', '', 'Context 2'),
-			new POEntry('Hello World 3', '', 'Context 3')
-			),
-		'firstOnly' => array()
-		);
+		$diffInfo = $utils->compare($startPot, $endPot);
 
 		$stringTable = array('a' => array(), 'r' => array());
 
