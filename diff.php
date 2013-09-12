@@ -77,7 +77,10 @@ if (isset($_POST['export']))
 	}
 
 	// Convert to XLF
-	$destLocale = 'fr-FR';
+	if (!isset($_POST['destLocale']))
+		exit();
+
+	$destLocale = $_POST['destLocale'];
 	$outputXlf = $GLOBALS['conf']['assetPath'] . $destLocale . '.xlf';
 	$tempXlf = $GLOBALS['conf']['assetPath'] . $destLocale . '.temp.xlf';
 	header("Content-disposition: attachment; filename=" . pathinfo($outputXlf, PATHINFO_BASENAME));
@@ -177,6 +180,14 @@ HTML;
 			<option value=po>PO</option>
 			<option value=xlf>XLF</option>
 		</select>
+  <select name="destLocale">
+HTML;
+
+		foreach ($GLOBALS['conf']['destLocales'] as $locale)
+			echo "<option value=$locale>$locale</option>";
+
+		echo <<<HTML
+  </select>
 		<input type=submit value="Export">
 		</form>
 HTML;
