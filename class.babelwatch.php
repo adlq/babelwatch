@@ -342,7 +342,7 @@ L'équipe "Localisation"
 </html>
 EMAIL;
 
-		return array('body' => $text, 'subject' => "Mise à jour de chaînes par {$revInfo['user']}");
+		return array('body' => $text, 'subject' => "Mise à jour de chaînes par {$revInfo['user']} (" . substr($revision, 0, 12) . ")");
 	}
 
 	/**
