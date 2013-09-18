@@ -279,7 +279,7 @@ class Babelwatch
 		}
 		catch (RuntimeException $e)
 		{
-			echo "Could not compose mail. {$e->getMessage()}";
+			echo "Could not compose mail. {$e->getMessage()}\n\n";
 			return;
 		}
 		$headers = "From:Localisation@crossknowledge.com \r\n";
