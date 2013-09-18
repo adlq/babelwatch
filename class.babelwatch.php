@@ -275,6 +275,7 @@ class Babelwatch
 	{
 		$mail = $this->generateStringMailMessage($revision, $diffStrings);
 		$headers = "From:Localisation@crossknowledge.com \r\n";
+		$header .= "Reply-To: {$mail['replyToAddress']}\r\n";
 		$headers .= "MIME-Version: 1.0\r\n";
 		$headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
 		$mailSent = mail($GLOBALS['conf']['mailTo'], $mail['subject'], $mail['body'], $headers);
@@ -290,6 +291,7 @@ class Babelwatch
 	{
 		// Retrieve revision info
 		$revInfo = $this->getRevisionInfo($revision);
+		$replyToAddress = $this->getReplyToAddress($revInfo($revision));
 
 		require_once(__DIR__ . '/class.front.php');
 		$front = new Front();
@@ -342,7 +344,33 @@ L'équipe "Localisation"
 </html>
 EMAIL;
 
-		return array('body' => $text, 'subject' => "Mise à jour de chaînes par {$revInfo['user']} (" . substr($revision, 0, 12) . ")");
+		return array(
+		'body' => $text,
+		'replyToAddress' => $replyToAddress,
+		'subject' => "Mise à jour de chaînes par {$revInfo['user']} (" . substr($revision, 0, 12) . ")");
+	}
+
+	/**
+	 * Extract the e-mail address from the user entry in
+	 * revision info.
+	 *
+	 * The user must respect the following format:
+	 * Name <mail@address.com>
+	 *
+	 * @param array $revInfo Array containing various
+	 * info about the revision
+	 * @throws RuntimeException
+	 */
+	public function getReplyToAddress($revInfo)
+	{
+		if (!array_key_exists('user', $revInfo))
+			throw new RuntimeException('No user entry found in revision information');
+
+		$match = array();
+		if (preg_match("/<(.+)>/", $revInfo['user'], $match) && isset($match[1]))
+			return $match[1];
+
+		throw new RuntimeException('Could not extract e-mail address from the user entry in revision information');
 	}
 
 	/**
