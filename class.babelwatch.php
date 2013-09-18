@@ -526,9 +526,9 @@ EMAIL;
 
 		// Notify the result to the user
 		if ($result === true)
-			echo "Failed to update TMS\n";
-		else
 			echo "TMS successfully updated\n";
+		else
+			echo "Failed to update TMS\n";
 
 		echo "\n===\n";
 	}
