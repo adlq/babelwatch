@@ -273,9 +273,17 @@ class Babelwatch
 	 */
 	private function composeStringMail($revision, $diffStrings)
 	{
-		$mail = $this->generateStringMailMessage($revision, $diffStrings);
+		try
+		{
+			$mail = $this->generateStringMailMessage($revision, $diffStrings);
+		}
+		catch (RuntimeException $e)
+		{
+			echo "Could not compose mail. {$e->getMessage()}";
+			return;
+		}
 		$headers = "From:Localisation@crossknowledge.com \r\n";
-		$header .= "Reply-To: {$mail['replyToAddress']}\r\n";
+		$headers .= "Reply-To: {$mail['replyToAddress']}\r\n";
 		$headers .= "MIME-Version: 1.0\r\n";
 		$headers .= "Content-Type: text/html; charset=ISO-8859-1\r\n";
 		$mailSent = mail($GLOBALS['conf']['mailTo'], $mail['subject'], $mail['body'], $headers);
@@ -291,7 +299,7 @@ class Babelwatch
 	{
 		// Retrieve revision info
 		$revInfo = $this->getRevisionInfo($revision);
-		$replyToAddress = $this->getReplyToAddress($revInfo($revision));
+		$replyToAddress = $this->getReplyToAddress($revInfo);
 
 		require_once(__DIR__ . '/class.front.php');
 		$front = new Front();
