@@ -378,7 +378,8 @@ EMAIL;
 		if (preg_match("/<(.+)>/", $revInfo['user'], $match) && isset($match[1]))
 			return $match[1];
 
-		throw new RuntimeException('Could not extract e-mail address from the user entry in revision information');
+		// Default reply-to address
+		return "dev_lms@crossknowledge.com";
 	}
 
 	/**
