@@ -171,9 +171,11 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']) && !
 				array_push($stringTable['a'], array('content' => htmlentities($string), 'references' => $ref));
 
 				// Prepare to save added strings info in the page
+				$source = htmlentities($entry->getSource());
+				$context = htmlentities($entry->getContext());
 				echo <<<HTML
-				<input type=hidden name=newStringContent_$hiddenStringId value="{$entry->getSource()}">
-				<input type=hidden name=newStringContext_$hiddenStringId value="{$entry->getContext()}">
+				<input type=hidden name=newStringContent_$hiddenStringId value="$source">
+				<input type=hidden name=newStringContext_$hiddenStringId value="$context">
 HTML;
 				$hiddenStringId++;
 			}
