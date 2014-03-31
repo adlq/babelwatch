@@ -168,18 +168,35 @@ class StandardResourceExtractor
 			$potLists[$ext] = $output . '_' . $ext . '.pot';
 			$this->poUtils->initGettextFile($potLists[$ext]);
 
+			$execOutput = array();
+			$returnCode = null;
 			// Extract gettext strings
 			switch($ext)
 			{
 				case 'm':
-					exec("xgettext --sort-output --add-location --omit-header --no-wrap -c --from-code=utf-8 --force-po --output={$potLists[$ext]} -j -f {$this->fileLists[$ext]} 1> nul 2>&1");
+					exec("xgettext --sort-output --add-location --omit-header --no-wrap -c --from-code=utf-8 --force-po --output={$potLists[$ext]} -j -f {$this->fileLists[$ext]}", $execOutput, $returnCode);
 					break;
 				case 'php':
-					exec("xgettext --sort-output --add-location --omit-header --no-wrap -c --from-code=utf-8 --force-po --output={$potLists[$ext]} -j -k -kEpiLang -kEpiLangKey -kEpilang -kSingleEnquotedEpiLang -kSingleEnquotedEpilang -f {$this->fileLists[$ext]} 1> nul 2>&1");
+					exec("xgettext --sort-output --add-location --omit-header --no-wrap -c --from-code=utf-8 --force-po --output={$potLists[$ext]} -j -k -kEpiLang -kEpiLangKey -kEpilang -kSingleEnquotedEpiLang -kSingleEnquotedEpilang -f {$this->fileLists[$ext]}", $execOutput, $returnCode);
 					break;
 				case 'js':
-					exec("xgettext --language=Python --sort-output --add-location --omit-header --no-wrap -c --from-code=utf-8 --force-po --output={$potLists[$ext]} -j -k -kEpiLang -kEpiLangKey -kEpilang -kSingleEnquotedEpiLang -kSingleEnquotedEpilang -f {$this->fileLists[$ext]} 1> nul 2>&1");
+					exec("xgettext --language=Python --sort-output --add-location --omit-header --no-wrap -c --from-code=utf-8 --force-po --output={$potLists[$ext]} -j -k -kEpiLang -kEpiLangKey -kEpilang -kSingleEnquotedEpiLang -kSingleEnquotedEpilang -f {$this->fileLists[$ext]}", $execOutput, $returnCode);
 					break;
+			}
+
+			if ($returnCode > 0)
+			{
+				// Revert all the changes
+				$cwd = getcwd();
+				chdir($this->potPath);
+				unlink($output);
+				unlink($potLists[$ext]);
+				unlink($this->fileLists[$ext]);
+
+				unlink($lockName);
+				chdir($cwd);
+				throw new RuntimeException("An unexpected error has occurred during the generation of the pot files");
+
 			}
 		}
 

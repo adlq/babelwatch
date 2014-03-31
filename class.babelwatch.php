@@ -1111,14 +1111,8 @@ EMAIL;
 
 		// Rebuild POT file
 		$potName = $this->assetPath . 'pot' . DIRECTORY_SEPARATOR . $rev . ".pot";
-		try
-		{
-			$potfile = $this->resourceExtractor->buildGettextFiles($potName, false, false);
-		}
-		catch (RuntimeException $e)
-		{
-			die($e->getMessage());
-		}
+
+		$potfile = $this->resourceExtractor->buildGettextFiles($potName, false, false);
 
 		// Re-update to previous revision
 		exec("hg update --clean --rev $oldRev");

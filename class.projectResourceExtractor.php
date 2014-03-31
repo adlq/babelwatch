@@ -17,7 +17,7 @@ class ProjectResourceExtractor extends StandardResourceExtractor implements IRes
 	 */
 	public function buildGettextFiles($output, $keepPreviousFile, $verbose = false)
 	{
-			$potFiles = $this->buildGettextFromAllStrings($output, $keepPreviousFile, $verbose);
+		$potFiles = $this->buildGettextFromAllStrings($output, $keepPreviousFile, $verbose);
 
 		return $potFiles;
 	}

@@ -143,77 +143,77 @@ if (isset($_GET['start']) && isset($_GET['end']) && isset($_GET['repoUrl']) && !
 		$proceed = false; // Don't do anything else
 	}
 
-	if (!empty($startRevisionFullId) && !empty($endRevisionFullId) && $proceed)
-	{
-		// Else if one of the revisions is not in the db,
-		// Rebuild POT for both revisions and compare them
-		$startPot = $tracker->getPotAtRevision($startRevisionFullId);
-		$endPot = $tracker->getPotAtRevision($endRevisionFullId);
-
-		require_once($GLOBALS['conf']['pophpPath'] . 'POUtils.php');
-		$utils = new POUtils();
-
-		$diffInfo = $utils->compare($startPot, $endPot);
-
-		$stringTable = array('a' => array(), 'r' => array());
-
-		$hiddenStringId = 0;
-		echo '<form action="" method="post">';
-		// Process added strings
-		foreach ($diffInfo['secondOnly'] as $entry)
-		{
-			$string = $entry->getSource();
-			$ref = $entry->getReferences($repoInfo['sourceFolder']);
-
-			// Update $data
-			array_push($stringTable['a'], array('content' => htmlentities($string), 'references' => $ref));
-
-			// Prepare to save added strings info in the page
-			echo <<<HTML
-			<input type=hidden name=newStringContent_$hiddenStringId value="{$entry->getSource()}">
-			<input type=hidden name=newStringContext_$hiddenStringId value="{$entry->getContext()}">
-HTML;
-			$hiddenStringId++;
-		}
-		echo <<<HTML
-		<select name=export>
-			<option value=po>PO</option>
-			<option value=xlf>XLF</option>
-		</select>
-  <select name="destLocale">
-HTML;
-
-		foreach ($GLOBALS['conf']['destLocales'] as $locale)
-			echo "<option value=$locale>$locale</option>";
-
-		echo <<<HTML
-  </select>
-		<input type=submit value="Export">
-		</form>
-HTML;
-
-		// Process removed strings
-		foreach ($diffInfo['firstOnly'] as $entry)
-		{
-			$string = $entry->getSource();
-			$ref = $entry->getReferences($repoInfo['sourceFolder']);
-
-			array_push($stringTable['r'], array('content' => htmlentities($string), 'references' => $ref));
-		}
-
-		$diffTable = $front->displayStringTable($stringTable, false);
-
-	}
-
-
-	// Delete the lock
 	try
 	{
+		if (!empty($startRevisionFullId) && !empty($endRevisionFullId) && $proceed)
+		{
+			// Else if one of the revisions is not in the db,
+			// Rebuild POT for both revisions and compare them
+			$startPot = $tracker->getPotAtRevision($startRevisionFullId);
+			$endPot = $tracker->getPotAtRevision($endRevisionFullId);
+
+			require_once($GLOBALS['conf']['pophpPath'] . 'POUtils.php');
+			$utils = new POUtils();
+
+			$diffInfo = $utils->compare($startPot, $endPot);
+
+			$stringTable = array('a' => array(), 'r' => array());
+
+			$hiddenStringId = 0;
+			echo '<form action="" method="post">';
+			// Process added strings
+			foreach ($diffInfo['secondOnly'] as $entry)
+			{
+				$string = $entry->getSource();
+				$ref = $entry->getReferences($repoInfo['sourceFolder']);
+
+				// Update $data
+				array_push($stringTable['a'], array('content' => htmlentities($string), 'references' => $ref));
+
+				// Prepare to save added strings info in the page
+				echo <<<HTML
+				<input type=hidden name=newStringContent_$hiddenStringId value="{$entry->getSource()}">
+				<input type=hidden name=newStringContext_$hiddenStringId value="{$entry->getContext()}">
+HTML;
+				$hiddenStringId++;
+			}
+			echo <<<HTML
+			<select name=export>
+				<option value=po>PO</option>
+				<option value=xlf>XLF</option>
+			</select>
+		<select name="destLocale">
+HTML;
+
+			foreach ($GLOBALS['conf']['destLocales'] as $locale)
+				echo "<option value=$locale>$locale</option>";
+
+			echo <<<HTML
+		</select>
+			<input type=submit value="Export">
+			</form>
+HTML;
+
+			// Process removed strings
+			foreach ($diffInfo['firstOnly'] as $entry)
+			{
+				$string = $entry->getSource();
+				$ref = $entry->getReferences($repoInfo['sourceFolder']);
+
+				array_push($stringTable['r'], array('content' => htmlentities($string), 'references' => $ref));
+			}
+
+			$diffTable = $front->displayStringTable($stringTable, false);
+
+		}
+
+		// Delete the lock
 		unlink($lockName);
 	}
 	catch (Exception $e)
 	{
 		$front->displayException($e);
+		unlink($lockName);
 	}
 }
 else
