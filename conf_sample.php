@@ -64,5 +64,20 @@ $GLOBALS['conf'] = array(
 	// Absolute path to the folder containing the TMS toolkit
 	'tmsToolkitPath' => '',
 	// Absolute path to the folder containing the pophp lib
-	'pophpPath' => ''
+	'pophpPath' => '',
+	// Absolute path to the folder containing the l10n-php-scripts
+	'l10nScriptsPath' => '',
+	// An array containing all possible destination locales
+	'destLocales' => array(),
+	// Absolute path to the .hgrc configuration file
+	'hgrcPath' => '',
+
+	/*
+	 * Email notifications: when the source strings are
+	 * modified, send a mail to the given addresses.
+	 */
+	'mailNotifications' => false,
+	// A comma separated list of the email addresses
+	'mailTo' => ''
+
 );
